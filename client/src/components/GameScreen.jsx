@@ -13,7 +13,6 @@ function GameScreen({ socket, initialState, playerName }) {
 
   useEffect(() => {
     if (!socket) return
-
     socket.on('drawn', ({ tile, state }) => {
       setState(state)
       setMyHand(state.myHand)
@@ -21,19 +20,16 @@ function GameScreen({ socket, initialState, playerName }) {
         setMessage('あなたのターン：牌を1枚捨ててください')
       }
     })
-
     socket.on('discarded', ({ tile, byPlayerId, state }) => {
       setState(state)
       setMyHand(state.myHand)
       const name = state.players.find(p => p.id === byPlayerId)?.name || ''
       setMessage(`${name} が「${tile.char}」を捨てました`)
     })
-
     socket.on('naki_available', ({ tile, word }) => {
       setNakiOptions({ tile, word })
       setMessage(`「${word.join('')}」で鳴けます！`)
     })
-
     socket.on('naki_done', ({ byPlayerId, state }) => {
       setState(state)
       setMyHand(state.myHand)
@@ -41,17 +37,13 @@ function GameScreen({ socket, initialState, playerName }) {
       const name = state.players.find(p => p.id === byPlayerId)?.name || ''
       setMessage(`${name} が鳴きました`)
     })
-
     socket.on('agari_failed', (msg) => setMessage(msg))
-
     socket.on('game_end', ({ winnerId, score, state }) => {
       setState(state)
       const name = state.players.find(p => p.id === winnerId)?.name || ''
       setMessage(`🎉 ${name} のアガリ！ +${score}点`)
     })
-
     socket.on('ryukyoku', () => setMessage('流局！山牌がなくなりました'))
-
     return () => {
       socket.off('drawn')
       socket.off('discarded')
@@ -63,27 +55,22 @@ function GameScreen({ socket, initialState, playerName }) {
     }
   }, [socket])
 
-  // 単語候補をリアルタイム計算
   useEffect(() => {
     if (myHand.length === 0) return
     const chars = myHand.map(t => t.char)
     const found = []
     for (let i = 0; i < chars.length; i++) {
       for (let len = 2; len <= Math.min(7, chars.length - i); len++) {
-        const word = chars.slice(i, i + len).join('')
-        found.push(word)
+        found.push(chars.slice(i, i + len).join(''))
       }
     }
-    setCandidates([...new Set(found)].slice(0, 12))
+    setCandidates([...new Set(found)].slice(0, 16))
   }, [myHand])
 
   const handleDiscard = () => {
     if (!selectedTile) return
     const isMyTurn = state?.players[state.currentTurn]?.id === myId
-    if (!isMyTurn) {
-      setMessage('あなたのターンではありません')
-      return
-    }
+    if (!isMyTurn) { setMessage('あなたのターンではありません'); return }
     socket.emit('discard', { tileId: selectedTile.id })
     setSelectedTile(null)
   }
@@ -98,58 +85,135 @@ function GameScreen({ socket, initialState, playerName }) {
         tileIds.push(nakiOptions.tile.id)
       } else {
         const idx = myHand.findIndex((t, i) => t.char === char && !usedIdx.includes(i))
-        if (idx !== -1) {
-          usedIdx.push(idx)
-          tileIds.push(myHand[idx].id)
-        }
+        if (idx !== -1) { usedIdx.push(idx); tileIds.push(myHand[idx].id) }
       }
     }
     socket.emit('naki', { tileIds })
     setNakiOptions(null)
   }
 
-  const handleAgari = () => {
-    socket.emit('agari')
+  const isMyTurn = state?.players[state.currentTurn]?.id === myId
+  const players = state?.players || []
+  const myIndex = players.findIndex(p => p.id === myId)
+
+  // 自分を基準に上・左・右を計算
+  const opponent = (offset) => {
+    if (players.length === 0) return null
+    const idx = (myIndex + offset + players.length) % players.length
+    return players[idx]
   }
 
-  const isMyTurn = state?.players[state.currentTurn]?.id === myId
+  const topPlayer    = opponent(2)
+  const leftPlayer   = opponent(1)
+  const rightPlayer  = opponent(3)
 
-  return (
-    <div className="game-screen">
-      <div className="game-overlay">
+  const TileBack = ({ vertical }) => (
+    <div className={`tile-back ${vertical ? 'vertical' : ''}`}>語</div>
+  )
 
-        {/* 上部：プレイヤー情報 */}
-        <div className="players-bar">
-          {state?.players.map((p, i) => (
-            <div key={p.id} className={`player-info ${p.id === myId ? 'me' : ''} ${state.currentTurn === i ? 'active' : ''}`}>
-              <span className="player-name">{p.name}</span>
-              <span className="player-score">{state.scores[p.id]}点</span>
-              <span className="player-tiles">手牌:{state.handCounts[p.id]}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* 中央：メッセージ */}
-        <div className="message-area">
-          <p className={`message ${isMyTurn ? 'my-turn' : ''}`}>{message}</p>
-        </div>
-
-        {/* 副露済み単語 */}
-        {state?.melds[myId]?.length > 0 && (
-          <div className="melds-area">
-            {state.melds[myId].map((meld, i) => (
-              <div key={i} className="meld-word">
-                {meld.map((char, j) => (
-                  <div key={j} className="tile meld-tile">{char}</div>
-                ))}
-              </div>
+  const PlayerPanel = ({ player, position }) => {
+    if (!player) return null
+    const isActive = state?.players[state.currentTurn]?.id === player.id
+    const count = state?.handCounts[player.id] || 0
+    return (
+      <div className={`player-panel ${position} ${isActive ? 'active' : ''}`}>
+        <div className="panel-name">{player.name}</div>
+        <div className="panel-score">{state?.scores[player.id]}点</div>
+        {state?.melds[player.id]?.length > 0 && (
+          <div className="panel-melds">
+            {state.melds[player.id].map((meld, i) => (
+              <span key={i} className="panel-meld">{meld.join('')}</span>
             ))}
           </div>
         )}
+      </div>
+    )
+  }
 
-        {/* 手牌 */}
-        <div className="hand-area">
-          <div className="hand-tiles">
+  return (
+    <div className="game-screen">
+      <div className="game-layout">
+
+        {/* 上：対面プレイヤー */}
+        <div className="area-top">
+          <PlayerPanel player={topPlayer} position="top" />
+          <div className="opponent-hand">
+            {topPlayer && Array(state?.handCounts[topPlayer.id] || 0).fill(0).map((_, i) => (
+              <TileBack key={i} />
+            ))}
+          </div>
+          {topPlayer && state?.melds[topPlayer.id]?.length > 0 && (
+            <div className="opponent-melds">
+              {state.melds[topPlayer.id].map((meld, i) => (
+                <span key={i} className="opponent-meld-word">{meld.join('')}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 中段：左・中央卓・右 */}
+        <div className="area-middle">
+
+          {/* 左プレイヤー */}
+          <div className="area-left">
+            <PlayerPanel player={leftPlayer} position="left" />
+            <div className="opponent-hand-vertical">
+              {leftPlayer && Array(state?.handCounts[leftPlayer.id] || 0).fill(0).map((_, i) => (
+                <TileBack key={i} vertical />
+              ))}
+            </div>
+          </div>
+
+          {/* 中央卓 */}
+          <div className="area-center">
+            <div className="table-info">
+              <div className="wall-count">{state?.wallCount}<span>枚</span></div>
+              <div className="last-discard">
+                {state?.lastDiscard
+                  ? <div className="tile tile-discard">{state.lastDiscard.char}</div>
+                  : <div className="no-discard">-</div>
+                }
+                {state?.lastDiscard && (
+                  <div className="last-discard-label">
+                    {state.players.find(p => p.id === state.lastDiscardPlayer)?.name}の捨て牌
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className={`message-box ${isMyTurn ? 'my-turn' : ''}`}>
+              {message}
+            </div>
+          </div>
+
+          {/* 右プレイヤー */}
+          <div className="area-right">
+            <PlayerPanel player={rightPlayer} position="right" />
+            <div className="opponent-hand-vertical">
+              {rightPlayer && Array(state?.handCounts[rightPlayer.id] || 0).fill(0).map((_, i) => (
+                <TileBack key={i} vertical />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 下：自分 */}
+        <div className="area-bottom">
+
+          {/* 副露済み */}
+          {state?.melds[myId]?.length > 0 && (
+            <div className="my-melds">
+              {state.melds[myId].map((meld, i) => (
+                <div key={i} className="my-meld-word">
+                  {meld.map((char, j) => (
+                    <div key={j} className="tile meld-tile">{char}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 手牌 */}
+          <div className="my-hand">
             {myHand.map((tile) => (
               <div
                 key={tile.id}
@@ -160,45 +224,45 @@ function GameScreen({ socket, initialState, playerName }) {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* 操作ボタン */}
-        <div className="action-area">
-          <button
-            className="action-btn discard-btn"
-            onClick={handleDiscard}
-            disabled={!selectedTile || !isMyTurn}
-          >
-            打牌
-          </button>
-          {nakiOptions && (
-            <button className="action-btn naki-btn" onClick={handleNaki}>
-              鳴く「{nakiOptions.word.join('')}」
+          {/* 自分のプレイヤー情報 */}
+          <div className="my-info">
+            <span className="my-name">{playerName}</span>
+            <span className="my-score">{state?.scores[myId]}点</span>
+            {isMyTurn && <span className="turn-indicator">▶ あなたのターン</span>}
+          </div>
+
+          {/* 操作ボタン */}
+          <div className="action-area">
+            <button
+              className="action-btn discard-btn"
+              onClick={handleDiscard}
+              disabled={!selectedTile || !isMyTurn}
+            >
+              打牌
             </button>
-          )}
-          <button className="action-btn agari-btn" onClick={handleAgari}>
-            アガリ宣言
-          </button>
-        </div>
+            {nakiOptions && (
+              <button className="action-btn naki-btn" onClick={handleNaki}>
+                鳴く「{nakiOptions.word.join('')}」
+              </button>
+            )}
+            <button
+              className="action-btn agari-btn"
+              onClick={() => socket.emit('agari')}
+            >
+              アガリ
+            </button>
+          </div>
 
-        {/* 候補単語 */}
-        <div className="candidates-area">
-          <p className="candidates-label">単語候補</p>
-          <div className="candidates-list">
+          {/* 単語候補 */}
+          <div className="candidates-area">
+            <span className="candidates-label">単語候補：</span>
             {candidates.map((w, i) => (
               <span key={i} className="candidate">{w}</span>
             ))}
           </div>
-        </div>
 
-        {/* 山牌残数・捨て牌 */}
-        <div className="info-bar">
-          <span>残り山牌: {state?.wallCount}枚</span>
-          <span>
-            最後の捨て牌: {state?.lastDiscard ? `「${state.lastDiscard.char}」` : 'なし'}
-          </span>
         </div>
-
       </div>
     </div>
   )
