@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, getRoom } = require('./roomManager');
-const { canNaki } = require('./gameLogic');
+const { canNaki, WORDS } = require('./gameLogic');
 
 const app = express();
 app.use(cors());
@@ -28,7 +28,6 @@ io.on('connection', (socket) => {
 
     const room = getRoom(roomId);
     io.to(roomId).emit('room_updated', getPublicState(roomId, socket.id));
-
   });
 
   socket.on('discard', ({ tileId }) => {
@@ -53,29 +52,29 @@ io.on('connection', (socket) => {
       const result = canNaki(hand, tile.char);
       if (result.possible) {
         const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
-        if (ps) ps.emit('naki_available', { tile, word: result.word });
+        if (ps) ps.emit('naki_available', { tile, candidates: result.candidates });
       }
     }
 
+    const discardedTileId = tile.id;
     setTimeout(() => {
       const updatedRoom = getRoom(roomId);
       if (!updatedRoom) return;
       if (updatedRoom.phase === 'finished') return;
-      if (updatedRoom.lastDiscard?.id === tile.id) {
-        const nextPlayer = updatedRoom.players[updatedRoom.currentTurn];
-        if (!nextPlayer) return;
-        if (updatedRoom.wall.length === 0) {
-          io.to(roomId).emit('ryukyoku', { state: getPublicState(roomId, socket.id) });
-          return;
-        }
-        const drawn = drawTile(roomId, nextPlayer.id);
-        for (const player of updatedRoom.players) {
-          const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
-          if (!ps) continue;
-          const st = getPublicState(roomId, player.id);
-          if (player.id === nextPlayer.id) {
-            ps.emit('drawn', { tile: drawn, state: st });
-          }
+      if (updatedRoom.lastDiscard?.id !== discardedTileId) return;
+      const nextPlayer = updatedRoom.players[updatedRoom.currentTurn];
+      if (!nextPlayer) return;
+      if (updatedRoom.wall.length === 0) {
+        io.to(roomId).emit('ryukyoku', { state: getPublicState(roomId, socket.id) });
+        return;
+      }
+      const drawn = drawTile(roomId, nextPlayer.id);
+      for (const player of updatedRoom.players) {
+        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+        if (!ps) continue;
+        const st = getPublicState(roomId, player.id);
+        if (player.id === nextPlayer.id) {
+          ps.emit('drawn', { tile: drawn, state: st });
         }
       }
     }, 3000);
@@ -95,19 +94,38 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('agari', () => {
+  socket.on('agari', ({ groups } = {}) => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
     if (!room) return;
 
-    const win = checkWin(roomId, socket.id);
-    if (!win) {
-      socket.emit('agari_failed', 'アガリ条件を満たしていません');
-      return;
+    let win = false;
+
+    if (groups && groups.length > 0) {
+      win = groups.every(w => w.length >= 2 && WORDS.has(w));
+      if (!win) {
+        const invalid = groups.filter(w => !WORDS.has(w) || w.length < 2);
+        socket.emit('agari_failed', `辞書にない単語: ${invalid.join('、')}`);
+        return;
+      }
+    } else {
+      win = checkWin(roomId, socket.id);
+      if (!win) {
+        socket.emit('agari_failed', 'アガリ条件を満たしていません');
+        return;
+      }
     }
 
     const score = calcPlayerScore(roomId, socket.id);
+    const playerCount = room.players.length;
+    const pointsEach = Math.floor(score / (playerCount - 1));
+
     room.scores[socket.id] += score;
+    for (const player of room.players) {
+      if (player.id !== socket.id) {
+        room.scores[player.id] -= pointsEach;
+      }
+    }
     room.phase = 'finished';
 
     for (const player of room.players) {
@@ -119,6 +137,7 @@ io.on('connection', (socket) => {
       });
     }
   });
+
   socket.on('start_game', () => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);

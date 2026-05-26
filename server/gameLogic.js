@@ -41,10 +41,14 @@ function canWin(handChars, melds) {
 
 function partition(chars) {
   if (chars.length === 0) return true;
-  for (let len = 2; len <= Math.min(14, chars.length); len++) {
-    const word = chars.slice(0, len).join('');
-    if (WORDS.has(word)) {
-      if (partition(chars.slice(len))) return true;
+  // 全ての開始位置から試す
+  for (let start = 0; start < chars.length; start++) {
+    for (let len = 2; len <= Math.min(14, chars.length - start); len++) {
+      const word = chars.slice(start, start + len).join('');
+      if (WORDS.has(word)) {
+        const remaining = [...chars.slice(0, start), ...chars.slice(start + len)];
+        if (partition(remaining)) return true;
+      }
     }
   }
   return false;
@@ -75,30 +79,63 @@ function calcScore(handChars, melds, isMenzen) {
   return score;
 }
 
+function calcWordScore(word) {
+  const len = word.length;
+  if (len >= 7) return 2500;
+  const scores = { 2: 300, 3: 500, 4: 800, 5: 1200, 6: 1700 };
+  return scores[len] || 0;
+}
+
+function calcWordScore(word) {
+  const len = word.length;
+  if (len >= 7) return 2500;
+  const scores = { 2: 300, 3: 500, 4: 800, 5: 1200, 6: 1700 };
+  return scores[len] || 0;
+}
+
 function findPartition(chars) {
   if (chars.length === 0) return [];
-  for (let len = 2; len <= Math.min(14, chars.length); len++) {
-    const word = chars.slice(0, len).join('');
-    if (WORDS.has(word)) {
-      const rest = findPartition(chars.slice(len));
-      if (rest !== null) return [word, ...rest];
+  let bestResult = null;
+  let bestScore = -1;
+  for (let start = 0; start < chars.length; start++) {
+    for (let len = 2; len <= Math.min(14, chars.length - start); len++) {
+      const word = chars.slice(start, start + len).join('');
+      if (WORDS.has(word)) {
+        const remaining = [...chars.slice(0, start), ...chars.slice(start + len)];
+        const rest = findPartition(remaining);
+        if (rest !== null) {
+          const totalScore = calcWordScore(word) + rest.reduce((s, w) => s + calcWordScore(w), 0);
+          if (totalScore > bestScore) {
+            bestScore = totalScore;
+            bestResult = [word, ...rest];
+          }
+        }
+      }
     }
   }
-  return null;
+  return bestResult;
 }
 
 function canNaki(hand, discardChar) {
   const combined = [...hand.map(t => t.char), discardChar];
+  const results = [];
+  const seen = new Set();
+
   for (let len = 3; len <= 4; len++) {
     for (let i = 0; i <= combined.length - len; i++) {
       const subset = combined.slice(i, i + len);
       if (subset.includes(discardChar)) {
         const word = subset.join('');
-        if (WORDS.has(word)) return { possible: true, word: subset };
+        if (WORDS.has(word) && !seen.has(word)) {
+          seen.add(word);
+          results.push({ word: subset });
+        }
       }
     }
   }
-  return { possible: false };
+
+  if (results.length === 0) return { possible: false, candidates: [] };
+  return { possible: true, candidates: results };
 }
 
 module.exports = { buildTiles, shuffle, canWin, calcScore, canNaki, findPartition, WORDS };

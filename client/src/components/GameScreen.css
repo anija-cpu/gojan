@@ -455,3 +455,104 @@
   height: 80px;
   flex-shrink: 0;
 }
+
+/* 結果画面 */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.result-box {
+  background: rgba(10,26,15,0.97);
+  border: 1px solid rgba(201,168,76,0.5);
+  border-radius: 16px;
+  padding: 48px 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  min-width: 360px;
+}
+
+.result-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 32px;
+  color: #f0d080;
+}
+
+.result-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.result-player {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(201,168,76,0.2);
+}
+
+.result-player.winner {
+  background: rgba(201,168,76,0.15);
+  border-color: #c9a84c;
+}
+
+.result-name {
+  font-size: 18px;
+  color: #f0d080;
+}
+
+.result-score {
+  font-size: 18px;
+  color: #c9a84c;
+  font-weight: 700;
+}
+
+.result-btn {
+  background: linear-gradient(135deg, #c9a84c, #8a6a2a);
+  color: #0a1a0f;
+  border: none;
+  padding: 16px 48px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.2em;
+  transition: all 0.2s;
+}
+
+.result-btn:hover {
+  opacity: 0.85;
+}
+
+.naki-candidates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.naki-label {
+  font-size: 14px;
+  color: #c9a84c;
+}
+
+.naki-skip-btn {
+  background: rgba(255,255,255,0.1);
+  color: #e8d5a3;
+  border: 1px solid rgba(255,255,255,0.2);
+}

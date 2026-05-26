@@ -13,6 +13,8 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "kuromoji": "^0.1.2",
+    "mecab-ipadic-seed": "^0.0.2",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
