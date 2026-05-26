@@ -27,7 +27,7 @@
 
 .title-kanji {
   font-family: 'Noto Serif JP', serif;
-  font-size: 96px;
+  font-size: 120px;
   font-weight: 900;
   color: #f0d080;
   text-shadow:
@@ -37,7 +37,7 @@
 }
 
 .title-roman {
-  font-size: 28px;
+  font-size: 42px;
   font-weight: 700;
   color: #c9a84c;
   letter-spacing: 0.4em;
@@ -45,7 +45,7 @@
 }
 
 .title-sub {
-  font-size: 14px;
+  font-size: 20px;
   color: #8a7a5a;
   letter-spacing: 0.3em;
   margin-top: 8px;
@@ -55,8 +55,8 @@
   background: linear-gradient(135deg, #c9a84c, #8a6a2a);
   color: #0a1a0f;
   border: none;
-  padding: 16px 64px;
-  font-size: 18px;
+  padding: 24px 96px;
+  font-size: 26px;
   font-family: 'Noto Sans JP', sans-serif;
   font-weight: 700;
   border-radius: 4px;

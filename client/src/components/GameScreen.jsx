@@ -210,14 +210,15 @@ socket.on('drawn', ({ tile, state }) => {
   const isMyTurn = state?.players[state.currentTurn]?.id === myId
   const players = state?.players || []
   const myIndex = players.findIndex(p => p.id === myId)
-  const opponent = (offset) => {
-    if (players.length === 0) return null
-    return players[(myIndex + offset + players.length) % players.length]
-  }
-  const topPlayer   = opponent(2)
-  const leftPlayer  = opponent(1)
-  const rightPlayer = opponent(3)
+  const playerCount = players.length
 
+// 2人：対面に表示
+  // 3人：右と対面に表示
+  // 4人：左・対面・右に表示
+  const topPlayer   = playerCount >= 2 ? players[(myIndex + Math.floor(playerCount / 2)) % playerCount] : null
+  const rightPlayer = playerCount >= 3 ? players[(myIndex + 1) % playerCount] : null
+  const leftPlayer  = playerCount >= 4 ? players[(myIndex + 3) % playerCount] : null
+  
   const TileBack = ({ vertical }) => (
     <div className={`tile-back ${vertical ? 'vertical' : ''}`}>語</div>
   )

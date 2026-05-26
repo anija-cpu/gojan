@@ -29,24 +29,6 @@ io.on('connection', (socket) => {
     const room = getRoom(roomId);
     io.to(roomId).emit('room_updated', getPublicState(roomId, socket.id));
 
-    if (room.players.length === 4) {
-      dealHands(roomId);
-      for (const player of room.players) {
-        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
-        if (ps) ps.emit('game_start', getPublicState(roomId, player.id));
-      }
-
-      const firstPlayer = room.players[0];
-      const firstTile = drawTile(roomId, firstPlayer.id);
-      for (const player of room.players) {
-        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
-        if (!ps) continue;
-        const st = getPublicState(roomId, player.id);
-        if (player.id === firstPlayer.id) {
-          ps.emit('drawn', { tile: firstTile, state: st });
-        }
-      }
-    }
   });
 
   socket.on('discard', ({ tileId }) => {
@@ -135,6 +117,35 @@ io.on('connection', (socket) => {
         score,
         state: getPublicState(roomId, player.id)
       });
+    }
+  });
+  socket.on('start_game', () => {
+    const roomId = socket.data.roomId;
+    const room = getRoom(roomId);
+    if (!room) return;
+    if (room.players.length < 2) {
+      socket.emit('error', '2人以上必要です');
+      return;
+    }
+    if (room.players[0].id !== socket.id) {
+      socket.emit('error', '部屋主だけ開始できます');
+      return;
+    }
+
+    dealHands(roomId);
+    for (const player of room.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (ps) ps.emit('game_start', getPublicState(roomId, player.id));
+    }
+
+    const firstPlayer = room.players[0];
+    const firstTile = drawTile(roomId, firstPlayer.id);
+    for (const player of room.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (!ps) continue;
+      if (player.id === firstPlayer.id) {
+        ps.emit('drawn', { tile: firstTile, state: getPublicState(roomId, player.id) });
+      }
     }
   });
 
