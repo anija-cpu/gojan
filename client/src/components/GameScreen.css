@@ -176,9 +176,9 @@
 
 /* 区切りゾーン */
 .gap-zone {
-  width: 14px;
-  min-width: 14px;
-  height: 80px;
+  width: clamp(10px, 1.2vw, 18px);
+  min-width: 10px;
+  height: clamp(62px, 8vw, 104px);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -209,14 +209,14 @@
 
 /* 牌 */
 .tile {
-  width: 62px;
-  height: 80px;
+  width: clamp(48px, 6vw, 80px);
+  height: clamp(62px, 8vw, 104px);
   background: linear-gradient(160deg, #f5f0e8, #ddd8c8);
   border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: clamp(20px, 2.5vw, 34px);
   font-family: 'Noto Serif JP', serif;
   font-weight: 700;
   color: #1a1a2e;
@@ -254,22 +254,22 @@
 
 /* 裏牌 */
 .tile-back {
-  width: 40px;
-  height: 52px;
+  width: clamp(34px, 4vw, 52px);
+  height: clamp(44px, 5.5vw, 68px);
   background: linear-gradient(160deg, #2a4a30, #1a3a20);
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: clamp(11px, 1.4vw, 18px);
   color: rgba(201,168,76,0.35);
   border: 1px solid rgba(201,168,76,0.2);
   flex-shrink: 0;
 }
 
 .tile-back.vertical {
-  width: 52px;
-  height: 40px;
+  width: clamp(44px, 5.5vw, 68px);
+  height: clamp(34px, 4vw, 52px);
 }
 
 /* プレイヤーパネル */
@@ -425,7 +425,7 @@
 
 .drawn-separator {
   width: 2px;
-  height: 80px;
+  height: clamp(62px, 8vw, 104px);
   background: rgba(201,168,76,0.4);
   margin-right: 10px;
   align-self: center;
