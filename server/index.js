@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, getRoom } = require('./roomManager');
+const { joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, getRoom, nextRound } = require('./roomManager');
 const { canNaki, WORDS } = require('./gameLogic');
 
 const app = express();
@@ -128,11 +128,22 @@ io.on('connection', (socket) => {
     }
     room.phase = 'finished';
 
+    // アガリ単語を計算
+    const handChars = room.hands[socket.id].map(t => t.char);
+    const meldWords = room.melds[socket.id].map(m => m.join(''));
+    let agariWords = groups && groups.length > 0 ? groups : [];
+    if (agariWords.length === 0) {
+      const { findPartition } = require('./gameLogic');
+      agariWords = findPartition(handChars) || [];
+    }
+    agariWords = [...agariWords, ...meldWords];
+
     for (const player of room.players) {
       const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
       if (ps) ps.emit('game_end', {
         winnerId: socket.id,
         score,
+        agariWords,
         state: getPublicState(roomId, player.id)
       });
     }
@@ -164,6 +175,44 @@ io.on('connection', (socket) => {
       if (!ps) continue;
       if (player.id === firstPlayer.id) {
         ps.emit('drawn', { tile: firstTile, state: getPublicState(roomId, player.id) });
+      }
+    }
+  });
+
+  socket.on('next_round', () => {
+    const roomId = socket.data.roomId;
+    const room = getRoom(roomId);
+    if (!room) return;
+    if (room.players[0].id !== socket.id) return;
+
+    const result = nextRound(roomId);
+    if (!result) return;
+
+    if (result.gameover) {
+      io.to(roomId).emit('game_over_final', {
+        state: getPublicState(roomId, socket.id)
+      });
+      return;
+    }
+
+    const updatedRoom = getRoom(roomId);
+    dealHands(roomId);
+
+    for (const player of updatedRoom.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (ps) ps.emit('game_start', getPublicState(roomId, player.id));
+    }
+
+    const firstPlayer = updatedRoom.players[0];
+    const firstTile = drawTile(roomId, firstPlayer.id);
+    for (const player of updatedRoom.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (!ps) continue;
+      const st = getPublicState(roomId, player.id);
+      if (player.id === firstPlayer.id) {
+        ps.emit('next_round_start', { state: st, firstDraw: { tile: firstTile, state: st } });
+      } else {
+        ps.emit('next_round_start', { state: st, firstDraw: null });
       }
     }
   });

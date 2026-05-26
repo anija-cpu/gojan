@@ -556,3 +556,52 @@
   color: #e8d5a3;
   border: 1px solid rgba(255,255,255,0.2);
 }
+
+/* アガリ単語表示 */
+.agari-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.agari-word {
+  display: flex;
+  gap: 4px;
+}
+
+.agari-char {
+  width: 52px;
+  height: 68px;
+  background: linear-gradient(160deg, #f5f0e8, #ddd8c8);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 700;
+  color: #1a1a2e;
+  border: 2px solid #b8a878;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.result-score-big {
+  font-size: 42px;
+  font-weight: 700;
+  color: #f0d080;
+  font-family: 'Noto Serif JP', serif;
+  text-shadow: 0 0 20px rgba(240,208,128,0.6);
+}
+
+.result-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.next-btn {
+  background: linear-gradient(135deg, #00cc88, #006644) !important;
+  color: #fff !important;
+}

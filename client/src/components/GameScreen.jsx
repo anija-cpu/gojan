@@ -76,14 +76,22 @@ socket.on('drawn', ({ tile, state }) => {
 
     socket.on('agari_failed', (msg) => setMessage(msg))
 
-    socket.on('game_end', ({ winnerId, score, state }) => {
+    socket.on('game_end', ({ winnerId, score, agariWords, state }) => {
       setState(state)
       const name = state.players.find(p => p.id === winnerId)?.name || ''
       setMessage(`🎉 ${name} のアガリ！ +${score}点`)
-      setGameOver({ winnerId, score, state })
+      setGameOver({ winnerId, score, agariWords: agariWords || [], state })
     })
 
     socket.on('ryukyoku', () => setMessage('流局！山牌がなくなりました'))
+    socket.on('next_round_start', ({ state, firstDraw: fd }) => {
+      setState(state)
+      setMyHand(fd ? (state.myHand || []).filter(t => t.id !== fd.tile.id) : state.myHand || [])
+      setDrawnTile(fd?.tile || null)
+      setSpaces(new Set())
+      setGameOver(null)
+      setMessage(`第${state.round}局 開始！`)
+    })
 
     return () => {
       socket.off('drawn')
@@ -93,6 +101,7 @@ socket.on('drawn', ({ tile, state }) => {
       socket.off('agari_failed')
       socket.off('game_end')
       socket.off('ryukyoku')
+      socket.off('next_round_start')
     }
   }, [socket])
 
@@ -291,7 +300,30 @@ const handleNaki = (word) => {
       {gameOver && (
         <div className="result-overlay">
           <div className="result-box">
-            <h2 className="result-title">ゲーム終了</h2>
+            <h2 className="result-title">
+              {gameOver.state.players.find(p => p.id === gameOver.winnerId)?.name} のアガリ！
+            </h2>
+
+            {/* アガリ単語表示 */}
+            {gameOver.agariWords.length > 0 && (
+              <div className="agari-words">
+                {gameOver.agariWords.map((word, i) => (
+                  <div key={i} className="agari-word">
+                    {word.split('').map((char, j) => (
+                      <div key={j} className="agari-char">
+                        {char}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="result-score-big">
+              +{gameOver.score}点
+            </div>
+
+            {/* 点数一覧 */}
             <div className="result-scores">
               {gameOver.state.players.map(p => (
                 <div key={p.id} className={`result-player ${p.id === gameOver.winnerId ? 'winner' : ''}`}>
@@ -300,12 +332,23 @@ const handleNaki = (word) => {
                 </div>
               ))}
             </div>
-            <button className="result-btn" onClick={() => {
-              setGameOver(null)
-              window.location.reload()
-            }}>
-              ロビーに戻る
-            </button>
+
+            {/* 次局 or 終了 */}
+            <div className="result-buttons">
+              {gameOver.state.players[0]?.id === socket?.id &&
+                <button className="result-btn next-btn" onClick={() => {
+                  socket.emit('next_round')
+                }}>
+                  次の局へ
+                </button>
+              }
+              <button className="result-btn" onClick={() => {
+                setGameOver(null)
+                window.location.reload()
+              }}>
+                ロビーに戻る
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -130,7 +130,65 @@ function getPublicState(roomId, requesterId) {
     phase: room.phase,
     lastDiscard: room.lastDiscard,
     lastDiscardPlayer: room.lastDiscardPlayer,
+    round: room.round,
+    maxRounds: room.maxRounds,
   };
 }
 
 module.exports = { createRoom, getRoom, joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState };
+
+function createRoom(roomId) {
+  const tiles = shuffle(buildTiles());
+  rooms[roomId] = {
+    players: [],
+    hands: {},
+    melds: {},
+    scores: {},
+    wall: tiles,
+    discardPile: [],
+    discardsByPlayer: {},
+    currentTurn: 0,
+    phase: 'waiting',
+    lastDiscard: null,
+    lastDiscardPlayer: null,
+    round: 1,
+    maxRounds: 4,
+  };
+  return rooms[roomId];
+}
+
+function nextRound(roomId) {
+  const room = rooms[roomId];
+  if (!room) return null;
+
+  // 誰かが0点以下なら終了
+  const isGameOver = Object.values(room.scores).some(s => s <= 0);
+  if (isGameOver || room.round >= room.maxRounds) {
+    room.phase = 'gameover';
+    return { gameover: true };
+  }
+
+  // 次局の準備
+  const tiles = shuffle(buildTiles());
+  const scores = { ...room.scores };
+  const players = [...room.players];
+
+  rooms[roomId] = {
+    players,
+    hands: Object.fromEntries(players.map(p => [p.id, []])),
+    melds: Object.fromEntries(players.map(p => [p.id, []])),
+    scores,
+    wall: tiles,
+    discardPile: [],
+    discardsByPlayer: Object.fromEntries(players.map(p => [p.id, []])),
+    currentTurn: 0,
+    phase: 'playing',
+    lastDiscard: null,
+    lastDiscardPlayer: null,
+    round: room.round + 1,
+    maxRounds: room.maxRounds,
+  };
+  return { gameover: false };
+}
+
+module.exports = { createRoom, getRoom, joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, nextRound };
