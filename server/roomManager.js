@@ -16,6 +16,8 @@ function createRoom(roomId) {
     phase: 'waiting',
     lastDiscard: null,
     lastDiscardPlayer: null,
+    round: 1,
+    maxRounds: 4,
   };
   return rooms[roomId];
 }
@@ -27,16 +29,13 @@ function getRoom(roomId) {
 function joinRoom(roomId, playerId, playerName) {
   const room = rooms[roomId];
 
-  // 部屋がない、または終了・満員でリセット
-  if (!room || room.phase === 'finished' || room.players.length >= 4) {
-    if (!room || room.phase === 'finished') {
-      createRoom(roomId);
-    } else {
-      return false;
-    }
+  if (!room || room.phase === 'finished' || room.phase === 'gameover') {
+    createRoom(roomId);
   }
 
   const updatedRoom = rooms[roomId];
+  if (updatedRoom.players.length >= 4) return false;
+  if (updatedRoom.players.some(p => p.id === playerId)) return true;
   updatedRoom.players.push({ id: playerId, name: playerName });
   updatedRoom.hands[playerId] = [];
   updatedRoom.melds[playerId] = [];
@@ -135,43 +134,19 @@ function getPublicState(roomId, requesterId) {
   };
 }
 
-module.exports = { createRoom, getRoom, joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState };
-
-function createRoom(roomId) {
-  const tiles = shuffle(buildTiles());
-  rooms[roomId] = {
-    players: [],
-    hands: {},
-    melds: {},
-    scores: {},
-    wall: tiles,
-    discardPile: [],
-    discardsByPlayer: {},
-    currentTurn: 0,
-    phase: 'waiting',
-    lastDiscard: null,
-    lastDiscardPlayer: null,
-    round: 1,
-    maxRounds: 4,
-  };
-  return rooms[roomId];
-}
-
 function nextRound(roomId) {
   const room = rooms[roomId];
   if (!room) return null;
 
-  // 誰かが0点以下なら終了
   const isGameOver = Object.values(room.scores).some(s => s <= 0);
   if (isGameOver || room.round >= room.maxRounds) {
     room.phase = 'gameover';
     return { gameover: true };
   }
 
-  // 次局の準備
-  const tiles = shuffle(buildTiles());
   const scores = { ...room.scores };
-  const players = [...room.players];
+  const players = room.players.map(p => ({ ...p }));
+  const tiles = shuffle(buildTiles());
 
   rooms[roomId] = {
     players,
@@ -191,4 +166,7 @@ function nextRound(roomId) {
   return { gameover: false };
 }
 
-module.exports = { createRoom, getRoom, joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, nextRound };
+module.exports = {
+  createRoom, getRoom, joinRoom, dealHands, drawTile,
+  discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, nextRound
+};

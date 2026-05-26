@@ -12,6 +12,7 @@ function LobbyScreen({ onJoin }) {
   const [socketRef, setSocketRef] = useState(null)
 
   const handleJoin = () => {
+    if (joined) return
     if (!name.trim() || !room.trim()) {
       setStatus('名前とルームIDを入力してください')
       return

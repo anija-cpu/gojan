@@ -82,7 +82,7 @@ let nakiPossible = false;
       }
     }, waitTime);
   });
-  
+
   socket.on('naki', ({ tileIds }) => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
@@ -187,6 +187,7 @@ let nakiPossible = false;
     const room = getRoom(roomId);
     if (!room) return;
     if (room.players[0].id !== socket.id) return;
+    console.log('next_round players:', room.players.map(p => p.name));
 
     const result = nextRound(roomId);
     if (!result) return;

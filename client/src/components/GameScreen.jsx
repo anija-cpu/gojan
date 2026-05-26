@@ -321,7 +321,6 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
                 <TileBack key={i} />
               ))}
             </div>
-            {topPlayer && <DiscardRiver playerId={topPlayer.id} direction="top" />}
           </div>
 
           <div className="area-middle">
@@ -332,24 +331,55 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
                   <TileBack key={i} vertical />
                 ))}
               </div>
-              {leftPlayer && <DiscardRiver playerId={leftPlayer.id} direction="left" />}
             </div>
 
             <div className="area-center">
-              <div className="table-center">
-                <div className="wall-count">{state?.wallCount}<span>枚</span></div>
-                <div className="last-discard-area">
-                  {state?.lastDiscard
-                    ? <>
-                        <div className="tile tile-discard">{state.lastDiscard.char}</div>
-                        <div className="last-discard-label">
-                          {players.find(p => p.id === state.lastDiscardPlayer)?.name}
-                        </div>
-                      </>
-                    : <div className="no-discard">-</div>
-                  }
+              <div className="table-inner">
+                {/* 上の捨て牌河 */}
+                {topPlayer && (
+                  <div className="river-zone river-zone-top">
+                    <DiscardRiver playerId={topPlayer.id} direction="top" />
+                  </div>
+                )}
+
+                <div className="table-middle-row">
+                  {/* 左の捨て牌河 */}
+                  {leftPlayer && (
+                    <div className="river-zone river-zone-left">
+                      <DiscardRiver playerId={leftPlayer.id} direction="left" />
+                    </div>
+                  )}
+
+                  {/* 中央情報 */}
+                  <div className="table-center">
+                    <div className="wall-count">{state?.wallCount}<span>枚</span></div>
+                    <div className="last-discard-area">
+                      {state?.lastDiscard
+                        ? <>
+                            <div className="tile tile-discard">{state.lastDiscard.char}</div>
+                            <div className="last-discard-label">
+                              {players.find(p => p.id === state.lastDiscardPlayer)?.name}
+                            </div>
+                          </>
+                        : <div className="no-discard">-</div>
+                      }
+                    </div>
+                  </div>
+
+                  {/* 右の捨て牌河 */}
+                  {rightPlayer && (
+                    <div className="river-zone river-zone-right">
+                      <DiscardRiver playerId={rightPlayer.id} direction="right" />
+                    </div>
+                  )}
+                </div>
+
+                {/* 自分の捨て牌河 */}
+                <div className="river-zone river-zone-bottom">
+                  <DiscardRiver playerId={myId} direction="bottom" />
                 </div>
               </div>
+
               <div className={`message-box ${isMyTurn ? 'my-turn' : ''}`}>
                 {message}
               </div>
@@ -373,12 +403,10 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
                   <TileBack key={i} vertical />
                 ))}
               </div>
-              {rightPlayer && <DiscardRiver playerId={rightPlayer.id} direction="right" />}
             </div>
           </div>
 
           <div className="area-bottom">
-            <DiscardRiver playerId={myId} direction="bottom" />
             {state?.melds[myId]?.length > 0 && (
               <div className="my-melds">
                 {state.melds[myId].map((meld, i) => (
