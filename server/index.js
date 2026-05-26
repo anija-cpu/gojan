@@ -16,7 +16,6 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('接続:', socket.id);
 
-  // ルーム参加
   socket.on('join_room', ({ roomId, playerName }) => {
     const ok = joinRoom(roomId, socket.id, playerName);
     if (!ok) {
@@ -30,28 +29,26 @@ io.on('connection', (socket) => {
     const room = getRoom(roomId);
     io.to(roomId).emit('room_updated', getPublicState(roomId, socket.id));
 
-    // 4人揃ったらゲーム開始
     if (room.players.length === 4) {
       dealHands(roomId);
       for (const player of room.players) {
-        const playerSocket = [...io.sockets.sockets.values()]
-          .find(s => s.id === player.id);
-        if (playerSocket) {
-          playerSocket.emit('game_start', getPublicState(roomId, player.id));
-        }
+        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+        if (ps) ps.emit('game_start', getPublicState(roomId, player.id));
       }
-      // 最初のプレイヤーにツモ
+
       const firstPlayer = room.players[0];
-      const tile = drawTile(roomId, firstPlayer.id);
-      const firstSocket = [...io.sockets.sockets.values()]
-        .find(s => s.id === firstPlayer.id);
-      if (firstSocket) {
-        firstSocket.emit('drawn', { tile, state: getPublicState(roomId, firstPlayer.id) });
+      const firstTile = drawTile(roomId, firstPlayer.id);
+      for (const player of room.players) {
+        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+        if (!ps) continue;
+        const st = getPublicState(roomId, player.id);
+        if (player.id === firstPlayer.id) {
+          ps.emit('drawn', { tile: firstTile, state: st });
+        }
       }
     }
   });
 
-  // 打牌
   socket.on('discard', ({ tileId }) => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
@@ -63,13 +60,11 @@ io.on('connection', (socket) => {
     const tile = discardTile(roomId, socket.id, tileId);
     if (!tile) return;
 
-    // 全員に捨て牌を通知
     for (const player of room.players) {
       const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
       if (ps) ps.emit('discarded', { tile, byPlayerId: socket.id, state: getPublicState(roomId, player.id) });
     }
 
-    // 鳴き可能プレイヤーに通知
     for (const player of room.players) {
       if (player.id === socket.id) continue;
       const hand = room.hands[player.id];
@@ -80,9 +75,10 @@ io.on('connection', (socket) => {
       }
     }
 
-    // 鳴きなければ次のプレイヤーにツモ
     setTimeout(() => {
       const updatedRoom = getRoom(roomId);
+      if (!updatedRoom) return;
+      if (updatedRoom.phase === 'finished') return;
       if (updatedRoom.lastDiscard?.id === tile.id) {
         const nextPlayer = updatedRoom.players[updatedRoom.currentTurn];
         if (!nextPlayer) return;
@@ -91,13 +87,18 @@ io.on('connection', (socket) => {
           return;
         }
         const drawn = drawTile(roomId, nextPlayer.id);
-        const nextSocket = [...io.sockets.sockets.values()].find(s => s.id === nextPlayer.id);
-        if (nextSocket) nextSocket.emit('drawn', { tile: drawn, state: getPublicState(roomId, nextPlayer.id) });
+        for (const player of updatedRoom.players) {
+          const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+          if (!ps) continue;
+          const st = getPublicState(roomId, player.id);
+          if (player.id === nextPlayer.id) {
+            ps.emit('drawn', { tile: drawn, state: st });
+          }
+        }
       }
     }, 3000);
   });
 
-  // 鳴き
   socket.on('naki', ({ tileIds }) => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
@@ -112,7 +113,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // アガリ宣言
   socket.on('agari', () => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
@@ -138,9 +138,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 切断
   socket.on('disconnect', () => {
     console.log('切断:', socket.id);
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+    const room = getRoom(roomId);
+    if (!room) return;
+    room.phase = 'finished';
+    io.to(roomId).emit('player_left', {
+      playerId: socket.id,
+      playerName: socket.data.playerName
+    });
   });
 });
 

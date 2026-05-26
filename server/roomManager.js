@@ -11,6 +11,7 @@ function createRoom(roomId) {
     scores: {},
     wall: tiles,
     discardPile: [],
+    discardsByPlayer: {},
     currentTurn: 0,
     phase: 'waiting',
     lastDiscard: null,
@@ -24,13 +25,23 @@ function getRoom(roomId) {
 }
 
 function joinRoom(roomId, playerId, playerName) {
-  if (!rooms[roomId]) createRoom(roomId);
   const room = rooms[roomId];
-  if (room.players.length >= 4) return false;
-  room.players.push({ id: playerId, name: playerName });
-  room.hands[playerId] = [];
-  room.melds[playerId] = [];
-  room.scores[playerId] = 25000;
+
+  // 部屋がない、または終了・満員でリセット
+  if (!room || room.phase === 'finished' || room.players.length >= 4) {
+    if (!room || room.phase === 'finished') {
+      createRoom(roomId);
+    } else {
+      return false;
+    }
+  }
+
+  const updatedRoom = rooms[roomId];
+  updatedRoom.players.push({ id: playerId, name: playerName });
+  updatedRoom.hands[playerId] = [];
+  updatedRoom.melds[playerId] = [];
+  updatedRoom.scores[playerId] = 25000;
+  updatedRoom.discardsByPlayer[playerId] = [];
   return true;
 }
 
@@ -57,6 +68,8 @@ function discardTile(roomId, playerId, tileId) {
   if (idx === -1) return false;
   const [tile] = hand.splice(idx, 1);
   room.discardPile.push(tile);
+  if (!room.discardsByPlayer[playerId]) room.discardsByPlayer[playerId] = [];
+  room.discardsByPlayer[playerId].push(tile);
   room.lastDiscard = tile;
   room.lastDiscardPlayer = playerId;
   room.currentTurn = (room.currentTurn + 1) % room.players.length;
@@ -112,6 +125,7 @@ function getPublicState(roomId, requesterId) {
     scores: room.scores,
     wallCount: room.wall.length,
     discardPile: room.discardPile,
+    discardsByPlayer: room.discardsByPlayer,
     currentTurn: room.currentTurn,
     phase: room.phase,
     lastDiscard: room.lastDiscard,

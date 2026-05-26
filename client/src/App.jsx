@@ -7,6 +7,7 @@ function App() {
   const [screen, setScreen] = useState('title')
   const [socket, setSocket] = useState(null)
   const [gameState, setGameState] = useState(null)
+  const [firstDraw, setFirstDraw] = useState(null)
   const [playerName, setPlayerName] = useState('')
   const [roomId, setRoomId] = useState('')
 
@@ -17,9 +18,10 @@ function App() {
       )}
       {screen === 'lobby' && (
         <LobbyScreen
-          onJoin={(sock, state, name, room) => {
+          onJoin={(sock, state, name, room, draw) => {
             setSocket(sock)
             setGameState(state)
+            setFirstDraw(draw)
             setPlayerName(name)
             setRoomId(room)
             setScreen('game')
@@ -30,6 +32,7 @@ function App() {
         <GameScreen
           socket={socket}
           initialState={gameState}
+          firstDraw={firstDraw}
           playerName={playerName}
           roomId={roomId}
         />
