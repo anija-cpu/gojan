@@ -17,7 +17,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [dragArea, setDragArea] = useState(null)
   const [spaces, setSpaces] = useState(new Set())
   const [gameOver, setGameOver] = useState(null)
-
+  const [countdown, setCountdown] = useState(null)
 
   const myId = socket?.id
   const handRef = useRef(myHand)
@@ -28,10 +28,10 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   useEffect(() => {
     if (!socket) return
 
-socket.on('drawn', ({ tile, state }) => {
-  console.log('drawn受信:', tile, state.myHand.length)
+    socket.on('drawn', ({ tile, state }) => {
       setState(state)
       setDrawnTile(tile)
+      setCountdown(null)
       setMyHand(prev => {
         const handWithoutDrawn = state.myHand.filter(t => t.id !== tile.id)
         if (prev.length === 0) return handWithoutDrawn
@@ -49,27 +49,46 @@ socket.on('drawn', ({ tile, state }) => {
 
     socket.on('discarded', ({ tile, byPlayerId, state }) => {
       setState(state)
-      // 自分が打牌した後：ツモ牌を手牌に組み込み済みなので何もしない
-      if (byPlayerId !== myId) {
-        // 他人が打牌：手牌枚数はそのまま
-      }
       const name = state.players.find(p => p.id === byPlayerId)?.name || ''
       setMessage(`${name} が「${tile.char}」を捨てました`)
+      setCountdown(null)
     })
 
     socket.on('naki_available', ({ tile, candidates }) => {
+      // stateではなくmyIdRefで判定
       setNakiOptions({ tile, candidates })
-      setMessage(`鳴けます！単語を選んでください`)
+      setMessage('鳴けます！単語を選んでください')
+      setCountdown(15)
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            setNakiOptions(null)
+            return null
+          }
+          return prev - 1
+        })
+      }, 1000)
     })
 
     socket.on('naki_done', ({ byPlayerId, state }) => {
       setState(state)
       if (byPlayerId === myId) {
-        setMyHand(state.myHand)
+        // 鳴いた牌を手牌から除いて並び順を保持
+        const meldChars = state.melds[myId][state.melds[myId].length - 1]
+        setMyHand(prev => {
+          let remaining = [...prev]
+          for (const char of meldChars) {
+            const idx = remaining.findIndex(t => t.char === char)
+            if (idx !== -1) remaining.splice(idx, 1)
+          }
+          return remaining
+        })
         setDrawnTile(null)
-        setSpaces(new Set())
+
       }
       setNakiOptions(null)
+      setCountdown(null)
       const name = state.players.find(p => p.id === byPlayerId)?.name || ''
       setMessage(`${name} が鳴きました`)
     })
@@ -84,12 +103,14 @@ socket.on('drawn', ({ tile, state }) => {
     })
 
     socket.on('ryukyoku', () => setMessage('流局！山牌がなくなりました'))
+
     socket.on('next_round_start', ({ state, firstDraw: fd }) => {
       setState(state)
       setMyHand(fd ? (state.myHand || []).filter(t => t.id !== fd.tile.id) : state.myHand || [])
       setDrawnTile(fd?.tile || null)
       setSpaces(new Set())
       setGameOver(null)
+      setCountdown(null)
       setMessage(`第${state.round}局 開始！`)
     })
 
@@ -105,13 +126,12 @@ socket.on('drawn', ({ tile, state }) => {
     }
   }, [socket])
 
-  // ドラッグ並び替え（手牌エリア内）
   const handleDragStart = (idx, area) => {
     setDragIdx(idx)
     setDragArea(area)
   }
 
-const handleDragOver = (e, idx, area) => {
+  const handleDragOver = (e, idx, area) => {
     e.preventDefault()
     if (dragArea === null) return
     if (dragArea === 'drawn' && area === 'hand') {
@@ -134,17 +154,11 @@ const handleDragOver = (e, idx, area) => {
       const next = new Set()
       for (const s of prev) {
         if (dragIdx < idx) {
-          if (s > dragIdx && s <= idx) {
-            next.add(s - 1)
-          } else {
-            next.add(s)
-          }
+          if (s > dragIdx && s <= idx) next.add(s - 1)
+          else next.add(s)
         } else {
-          if (s > idx && s <= dragIdx) {
-            next.add(s + 1)
-          } else {
-            next.add(s)
-          }
+          if (s > idx && s <= dragIdx) next.add(s + 1)
+          else next.add(s)
         }
       }
       return next
@@ -157,65 +171,33 @@ const handleDragOver = (e, idx, area) => {
     setDragArea(null)
   }
 
-  // ツモ牌を手牌に組み込む（ドラッグ）
-  const handleDropIntoHand = (e, idx) => {
-    e.preventDefault()
-    if (dragArea !== 'drawn' || !drawnTile) return
-    const newHand = [...myHand]
-    newHand.splice(idx, 0, drawnTile)
-    setMyHand(newHand)
-    setDrawnTile(null)
-    setDragIdx(null)
-    setDragArea(null)
-  }
-
-  // スペース追加・削除（牌の右側）
   const toggleSpace = (pos) => {
     setSpaces(prev => {
       const next = new Set(prev)
-      if (next.has(pos)) {
-        next.delete(pos)
-      } else {
-        next.add(pos)
-      }
+      if (next.has(pos)) next.delete(pos)
+      else next.add(pos)
       return next
     })
   }
 
-  // 打牌
   const handleDiscard = (tile, fromDrawn = false) => {
     const isMyTurn = state?.players[state.currentTurn]?.id === myId
     if (!isMyTurn) { setMessage('あなたのターンではありません'); return }
-
     if (fromDrawn) {
-      // ツモ切り
       socket.emit('discard', { tileId: tile.id })
       setDrawnTile(null)
-} else {
-      // 手牌から打牌
+    } else {
       socket.emit('discard', { tileId: tile.id })
       const discardIdx = myHand.findIndex(t => t.id === tile.id)
       setMyHand(prev => prev.filter(t => t.id !== tile.id))
-      // ツモ牌を打牌した位置に挿入
       if (drawnTile) {
         setMyHand(prev => {
           const newHand = [...prev]
-          const insertIdx = Math.min(discardIdx, newHand.length)
-          newHand.splice(insertIdx, 0, drawnTile)
+          newHand.splice(Math.min(discardIdx, newHand.length), 0, drawnTile)
           return newHand
         })
         setDrawnTile(null)
-        // 区切り位置を補正（打牌位置より右の区切りはそのまま）
-        setSpaces(prev => {
-          const next = new Set()
-          for (const s of prev) {
-            if (s <= discardIdx) next.add(s)
-            else next.add(s) // ツモ牌が同じ位置に入るのでずれない
-          }
-          return next
-        })
       } else {
-        // ツモ牌なし：打牌位置より右の区切りを1つ左にずらす
         setSpaces(prev => {
           const next = new Set()
           for (const s of prev) {
@@ -229,7 +211,7 @@ const handleDragOver = (e, idx, area) => {
     setSelectedTile(null)
   }
 
-const handleNaki = (word) => {
+  const handleNaki = (word) => {
     const tileIds = []
     const usedIdx = []
     const allHand = drawnTile ? [...myHand, drawnTile] : [...myHand]
@@ -243,20 +225,17 @@ const handleNaki = (word) => {
     }
     socket.emit('naki', { tileIds })
     setNakiOptions(null)
+    setCountdown(null)
   }
 
   const isMyTurn = state?.players[state.currentTurn]?.id === myId
   const players = state?.players || []
   const myIndex = players.findIndex(p => p.id === myId)
   const playerCount = players.length
-
-  // 2人：対面に表示
-  // 3人：右と対面に表示
-  // 4人：左・対面・右に表示
   const topPlayer   = playerCount >= 2 ? players[(myIndex + Math.floor(playerCount / 2)) % playerCount] : null
   const rightPlayer = playerCount >= 3 ? players[(myIndex + 1) % playerCount] : null
   const leftPlayer  = playerCount >= 4 ? players[(myIndex + 3) % playerCount] : null
-  
+
   const TileBack = ({ vertical }) => (
     <div className={`tile-back ${vertical ? 'vertical' : ''}`}>語</div>
   )
@@ -284,17 +263,14 @@ const handleNaki = (word) => {
     return (
       <div className={`river river-${direction}`}>
         {discards.map((tile, i) => (
-          <div
-            key={i}
-            className={`river-tile ${tile.id === state?.lastDiscard?.id ? 'river-last' : ''}`}
-          >
+          <div key={i} className={`river-tile ${tile.id === state?.lastDiscard?.id ? 'river-last' : ''}`}>
             {tile.char}
           </div>
         ))}
       </div>
     )
   }
-  
+
   return (
     <>
       {gameOver && (
@@ -303,27 +279,18 @@ const handleNaki = (word) => {
             <h2 className="result-title">
               {gameOver.state.players.find(p => p.id === gameOver.winnerId)?.name} のアガリ！
             </h2>
-
-            {/* アガリ単語表示 */}
             {gameOver.agariWords.length > 0 && (
               <div className="agari-words">
                 {gameOver.agariWords.map((word, i) => (
                   <div key={i} className="agari-word">
                     {word.split('').map((char, j) => (
-                      <div key={j} className="agari-char">
-                        {char}
-                      </div>
+                      <div key={j} className="agari-char">{char}</div>
                     ))}
                   </div>
                 ))}
               </div>
             )}
-
-            <div className="result-score-big">
-              +{gameOver.score}点
-            </div>
-
-            {/* 点数一覧 */}
+            <div className="result-score-big">+{gameOver.score}点</div>
             <div className="result-scores">
               {gameOver.state.players.map(p => (
                 <div key={p.id} className={`result-player ${p.id === gameOver.winnerId ? 'winner' : ''}`}>
@@ -332,20 +299,13 @@ const handleNaki = (word) => {
                 </div>
               ))}
             </div>
-
-            {/* 次局 or 終了 */}
             <div className="result-buttons">
               {gameOver.state.players[0]?.id === socket?.id &&
-                <button className="result-btn next-btn" onClick={() => {
-                  socket.emit('next_round')
-                }}>
+                <button className="result-btn next-btn" onClick={() => socket.emit('next_round')}>
                   次の局へ
                 </button>
               }
-              <button className="result-btn" onClick={() => {
-                setGameOver(null)
-                window.location.reload()
-              }}>
+              <button className="result-btn" onClick={() => { setGameOver(null); window.location.reload() }}>
                 ロビーに戻る
               </button>
             </div>
@@ -354,8 +314,6 @@ const handleNaki = (word) => {
       )}
       <div className="game-screen">
         <div className="game-layout">
-
-          {/* 上：対面 */}
           <div className="area-top">
             <PlayerPanel player={topPlayer} position="top" />
             <div className="opponent-hand">
@@ -366,7 +324,6 @@ const handleNaki = (word) => {
             {topPlayer && <DiscardRiver playerId={topPlayer.id} direction="top" />}
           </div>
 
-          {/* 中段 */}
           <div className="area-middle">
             <div className="area-left">
               <PlayerPanel player={leftPlayer} position="left" />
@@ -396,6 +353,17 @@ const handleNaki = (word) => {
               <div className={`message-box ${isMyTurn ? 'my-turn' : ''}`}>
                 {message}
               </div>
+              {countdown !== null && (
+                <div className="countdown-area">
+                  <div className="countdown">
+                    <div className="countdown-bar" style={{ width: `${(countdown / 15) * 100}%` }} />
+                    <span className="countdown-num">{countdown}</span>
+                  </div>
+                  <button className="skip-btn" onClick={() => { setCountdown(null); setNakiOptions(null) }}>
+                    鳴かない
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="area-right">
@@ -409,10 +377,8 @@ const handleNaki = (word) => {
             </div>
           </div>
 
-          {/* 下：自分 */}
           <div className="area-bottom">
             <DiscardRiver playerId={myId} direction="bottom" />
-
             {state?.melds[myId]?.length > 0 && (
               <div className="my-melds">
                 {state.melds[myId].map((meld, i) => (
@@ -424,7 +390,6 @@ const handleNaki = (word) => {
                 ))}
               </div>
             )}
-
             <div className="hand-row">
               <div className="my-hand">
                 {myHand.map((tile, idx) => (
@@ -432,16 +397,13 @@ const handleNaki = (word) => {
                     <div
                       className={`tile ${selectedTile?.id === tile.id ? 'selected' : ''} ${dragIdx === idx && dragArea === 'hand' ? 'dragging' : ''}`}
                       onClick={() => {
-                        if (selectedTile?.id === tile.id) {
-                          handleDiscard(tile)
-                        } else {
-                          setSelectedTile(tile)
-                        }
+                        if (selectedTile?.id === tile.id) handleDiscard(tile)
+                        else setSelectedTile(tile)
                       }}
-                  draggable
-                  onDragStart={() => handleDragStart(idx, 'hand')}
-                  onDragOver={(e) => handleDragOver(e, idx, 'hand')}
-                  onDragEnd={handleDragEnd}
+                      draggable
+                      onDragStart={() => handleDragStart(idx, 'hand')}
+                      onDragOver={(e) => handleDragOver(e, idx, 'hand')}
+                      onDragEnd={handleDragEnd}
                     >
                       {tile.char}
                     </div>
@@ -452,26 +414,19 @@ const handleNaki = (word) => {
                   </div>
                 ))}
               </div>
-
               {drawnTile && (
                 <div className="drawn-area">
                   <div className="drawn-separator" />
                   <div
                     className={`tile drawn-tile ${selectedTile?.id === drawnTile.id ? 'selected' : ''}`}
                     onClick={() => {
-                      if (selectedTile?.id === drawnTile.id) {
-                        handleDiscard(drawnTile, true)
-                      } else {
-                        setSelectedTile(drawnTile)
-                      }
+                      if (selectedTile?.id === drawnTile.id) handleDiscard(drawnTile, true)
+                      else setSelectedTile(drawnTile)
                     }}
-                  draggable
-                  onDragStart={() => {
-                    setDragIdx('drawn')
-                    setDragArea('drawn')
-                  }}
-                  onDragOver={(e) => handleDragOver(e, 'drawn', 'drawn')}
-                  onDragEnd={handleDragEnd}
+                    draggable
+                    onDragStart={() => { setDragIdx('drawn'); setDragArea('drawn') }}
+                    onDragOver={(e) => handleDragOver(e, 'drawn', 'drawn')}
+                    onDragEnd={handleDragEnd}
                   >
                     {drawnTile.char}
                   </div>
@@ -479,30 +434,21 @@ const handleNaki = (word) => {
                 </div>
               )}
             </div>
-
             <div className="my-info">
               <span className="my-name">{playerName}</span>
               <span className="my-score">{state?.scores[myId]}点</span>
               {isMyTurn && <span className="turn-indicator">▶ あなたのターン</span>}
             </div>
-
             <div className="action-area">
-{nakiOptions && (
+              {nakiOptions && (
                 <div className="naki-candidates">
                   <span className="naki-label">鳴く単語を選択：</span>
                   {nakiOptions.candidates.map((c, i) => (
-                    <button
-                      key={i}
-                      className="action-btn naki-btn"
-                      onClick={() => handleNaki(c.word)}
-                    >
+                    <button key={i} className="action-btn naki-btn" onClick={() => handleNaki(c.word)}>
                       {c.word.join('')}
                     </button>
                   ))}
-                  <button
-                    className="action-btn naki-skip-btn"
-                    onClick={() => setNakiOptions(null)}
-                  >
+                  <button className="action-btn naki-skip-btn" onClick={() => { setNakiOptions(null); setCountdown(null) }}>
                     スキップ
                   </button>
                 </div>
@@ -510,7 +456,6 @@ const handleNaki = (word) => {
               <button
                 className="action-btn agari-btn"
                 onClick={() => {
-                  // 区切り位置からグループを生成
                   const allTiles = drawnTile ? [...myHand, drawnTile] : [...myHand]
                   const groups = []
                   let current = []
@@ -527,7 +472,6 @@ const handleNaki = (word) => {
                 アガリ宣言
               </button>
             </div>
-
             <div className="hint-text">
               牌をクリックで選択 → もう一度クリックで打牌　／　牌の右側の縦線でグループ区切り
             </div>

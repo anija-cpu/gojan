@@ -46,17 +46,20 @@ io.on('connection', (socket) => {
       if (ps) ps.emit('discarded', { tile, byPlayerId: socket.id, state: getPublicState(roomId, player.id) });
     }
 
+let nakiPossible = false;
     for (const player of room.players) {
       if (player.id === socket.id) continue;
       const hand = room.hands[player.id];
       const result = canNaki(hand, tile.char);
       if (result.possible) {
+        nakiPossible = true;
         const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
         if (ps) ps.emit('naki_available', { tile, candidates: result.candidates });
       }
     }
 
     const discardedTileId = tile.id;
+    const waitTime = nakiPossible ? 15000 : 1000;
     setTimeout(() => {
       const updatedRoom = getRoom(roomId);
       if (!updatedRoom) return;
@@ -77,9 +80,9 @@ io.on('connection', (socket) => {
           ps.emit('drawn', { tile: drawn, state: st });
         }
       }
-    }, 3000);
+    }, waitTime);
   });
-
+  
   socket.on('naki', ({ tileIds }) => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);

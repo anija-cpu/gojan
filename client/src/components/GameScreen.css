@@ -605,3 +605,35 @@
   background: linear-gradient(135deg, #00cc88, #006644) !important;
   color: #fff !important;
 }
+
+/* カウントダウン */
+.countdown {
+  width: 200px;
+  height: 28px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(201,168,76,0.3);
+}
+
+.countdown-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #c9a84c, #f0d080);
+  border-radius: 14px;
+  transition: width 1s linear;
+}
+
+.countdown-num {
+  position: relative;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0a1a0f;
+  z-index: 1;
+}
