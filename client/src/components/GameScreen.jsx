@@ -19,7 +19,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [gameOver, setGameOver] = useState(null)
   const [countdown, setCountdown] = useState(null)
 
-  const myId = socket?.id
+  const myId = state?.players?.find(p => p.name === playerName)?.id || socket?.id
   const handRef = useRef(myHand)
   handRef.current = myHand
   const myIdRef = useRef(myId)
@@ -231,10 +231,20 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const isMyTurn = state?.players[state.currentTurn]?.id === myId
   const players = state?.players || []
   const myIndex = players.findIndex(p => p.id === myId)
+
+  console.log('myId:', myId)
+  console.log('players:', players.map(p => ({ id: p.id, name: p.name })))
+  console.log('myIndex:', myIndex)
+
   const playerCount = players.length
-  const topPlayer   = playerCount >= 2 ? players[(myIndex + Math.floor(playerCount / 2)) % playerCount] : null
-  const rightPlayer = playerCount >= 3 ? players[(myIndex + 1) % playerCount] : null
-  const leftPlayer  = playerCount >= 4 ? players[(myIndex + 3) % playerCount] : null
+  const getOpponentAtOffset = (offset) => {
+  if (playerCount < offset + 1) return null
+  return players[(myIndex + offset) % playerCount]
+}
+
+const rightPlayer = playerCount >= 3 ? getOpponentAtOffset(1) : null
+const topPlayer   = playerCount >= 2 ? getOpponentAtOffset(playerCount >= 3 ? 2 : 1) : null
+const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
 
   const TileBack = ({ vertical }) => (
     <div className={`tile-back ${vertical ? 'vertical' : ''}`}>語</div>

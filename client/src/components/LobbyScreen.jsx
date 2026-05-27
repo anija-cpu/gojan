@@ -18,7 +18,7 @@ function LobbyScreen({ onJoin }) {
       return
     }
     setStatus('接続中...')
-    const socket = io('http://localhost:3001')
+    const socket = io('https://gojan-production.up.railway.app')
 
     let savedState = null
     let savedDraw = null

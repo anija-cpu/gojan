@@ -27,7 +27,11 @@ io.on('connection', (socket) => {
     socket.data.playerName = playerName;
 
     const room = getRoom(roomId);
-    io.to(roomId).emit('room_updated', getPublicState(roomId, socket.id));
+    console.log('join_room players:', room.players.map(p => p.name));
+    for (const player of room.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (ps) ps.emit('room_updated', getPublicState(roomId, player.id));
+    }
   });
 
   socket.on('discard', ({ tileId }) => {
@@ -46,7 +50,7 @@ io.on('connection', (socket) => {
       if (ps) ps.emit('discarded', { tile, byPlayerId: socket.id, state: getPublicState(roomId, player.id) });
     }
 
-let nakiPossible = false;
+    let nakiPossible = false;
     for (const player of room.players) {
       if (player.id === socket.id) continue;
       const hand = room.hands[player.id];
@@ -131,7 +135,6 @@ let nakiPossible = false;
     }
     room.phase = 'finished';
 
-    // アガリ単語を計算
     const handChars = room.hands[socket.id].map(t => t.char);
     const meldWords = room.melds[socket.id].map(m => m.join(''));
     let agariWords = groups && groups.length > 0 ? groups : [];
