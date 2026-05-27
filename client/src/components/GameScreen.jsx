@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import './GameScreen.css'
 
+const SMALL_KANA = new Set(['ぁ','ぃ','ぅ','ぇ','ぉ','っ','ゃ','ゅ','ょ','ゎ','ゐ','ゑ'])
+
 function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [state, setState] = useState(initialState)
   const [myHand, setMyHand] = useState(() => {
@@ -246,6 +248,12 @@ const rightPlayer = playerCount >= 3 ? getOpponentAtOffset(1) : null
 const topPlayer   = playerCount >= 2 ? getOpponentAtOffset(playerCount >= 3 ? 2 : 1) : null
 const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
 
+const TileChar = ({ char }) => (
+  <span style={{ borderBottom: SMALL_KANA.has(char) ? '2px solid #1a1a2e' : 'none', paddingBottom: SMALL_KANA.has(char) ? '1px' : '0' }}>
+    {char}
+  </span>
+)
+
   const TileBack = ({ vertical }) => (
     <div className={`tile-back ${vertical ? 'vertical' : ''}`}>語</div>
   )
@@ -274,7 +282,7 @@ const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
       <div className={`river river-${direction}`}>
         {discards.map((tile, i) => (
           <div key={i} className={`river-tile ${tile.id === state?.lastDiscard?.id ? 'river-last' : ''}`}>
-            {tile.char}
+            <TileChar char={tile.char} />
           </div>
         ))}
       </div>
@@ -366,7 +374,7 @@ const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
                     <div className="last-discard-area">
                       {state?.lastDiscard
                         ? <>
-                            <div className="tile tile-discard">{state.lastDiscard.char}</div>
+                            <div className="tile tile-discard"><TileChar char={state.lastDiscard.char} /></div>
                             <div className="last-discard-label">
                               {players.find(p => p.id === state.lastDiscardPlayer)?.name}
                             </div>
@@ -443,7 +451,7 @@ const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
                       onDragOver={(e) => handleDragOver(e, idx, 'hand')}
                       onDragEnd={handleDragEnd}
                     >
-                      {tile.char}
+                      <TileChar char={tile.char} />
                     </div>
                     <div
                       className={`gap-zone ${spaces.has(idx + 1) ? 'active' : ''}`}
@@ -466,7 +474,7 @@ const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
                     onDragOver={(e) => handleDragOver(e, 'drawn', 'drawn')}
                     onDragEnd={handleDragEnd}
                   >
-                    {drawnTile.char}
+                    <TileChar char={drawnTile.char} />
                   </div>
                   <div className="drawn-label">ツモ</div>
                 </div>
