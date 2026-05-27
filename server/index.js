@@ -6,7 +6,9 @@ const { joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayer
 const { canNaki, WORDS } = require('./gameLogic');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'https://empowering-liberation-production-fb30.up.railway.app'
+}));
 
 const server = http.createServer(app);
 const io = new Server(server, {
