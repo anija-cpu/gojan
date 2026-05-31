@@ -10,19 +10,22 @@ function App() {
   const [firstDraw, setFirstDraw] = useState(null)
   const [playerName, setPlayerName] = useState('')
   const [roomId, setRoomId] = useState('')
-  const [bgmVolume, setBgmVolume] = useState(50)
+  const [bgmVolume, setBgmVolume] = useState(() => {
+    return Number(localStorage.getItem('bgmVolume') ?? 5)
+  })
   const [showVolume, setShowVolume] = useState(false)
 
   useEffect(() => {
     const audio = new Audio('/bgm.mp3')
     audio.loop = true
-    audio.volume = 0.5
+    audio.volume = 0.05
     window._bgm = audio
   }, [])
 
   useEffect(() => {
-    if (window._bgm) window._bgm.volume = bgmVolume / 100
-  }, [bgmVolume])
+  if (window._bgm) window._bgm.volume = bgmVolume / 100
+  localStorage.setItem('bgmVolume', bgmVolume)
+}, [bgmVolume])
 
   const startBgm = () => {
     window._bgm?.play().catch(() => {})
