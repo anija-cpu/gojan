@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TitleScreen from './components/TitleScreen'
 import LobbyScreen from './components/LobbyScreen'
 import GameScreen from './components/GameScreen'
@@ -11,10 +11,22 @@ function App() {
   const [playerName, setPlayerName] = useState('')
   const [roomId, setRoomId] = useState('')
 
+  // BGM
+  useEffect(() => {
+    const audio = new Audio('/bgm.mp3')
+    audio.loop = true
+    audio.volume = 0.5
+    window._bgm = audio
+  }, [])
+
+  const startBgm = () => {
+    window._bgm?.play().catch(() => {})
+  }
+
   return (
     <>
       {screen === 'title' && (
-        <TitleScreen onStart={() => setScreen('lobby')} />
+        <TitleScreen onStart={() => { startBgm(); setScreen('lobby') }} />
       )}
       {screen === 'lobby' && (
         <LobbyScreen
