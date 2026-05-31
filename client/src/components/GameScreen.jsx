@@ -27,15 +27,20 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
 
     // BGM
   useEffect(() => {
-    const audio = new Audio('/bgm.mp3')
-    audio.loop = true
-    audio.volume = 0.5
+  const audio = new Audio('/bgm.mp3')
+  audio.loop = true
+  audio.volume = 0.5
+  const play = () => {
     audio.play().catch(() => {})
-    return () => {
-      audio.pause()
-      audio.currentTime = 0
-    }
-  }, [])
+    document.removeEventListener('click', play)
+  }
+  document.addEventListener('click', play)
+  return () => {
+    audio.pause()
+    audio.currentTime = 0
+    document.removeEventListener('click', play)
+  }
+}, [])
 
   useEffect(() => {
     if (!socket) return
