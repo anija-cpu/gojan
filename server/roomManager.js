@@ -166,7 +166,17 @@ function nextRound(roomId) {
   return { gameover: false };
 }
 
+function getAllRooms() {
+  return Object.entries(rooms)
+    .filter(([id, room]) => room.phase === 'waiting')
+    .map(([id, room]) => ({
+      roomId: id,
+      players: room.players.map(p => p.name),
+      playerCount: room.players.length,
+    }));
+}
+
 module.exports = {
-  createRoom, getRoom, joinRoom, dealHands, drawTile,
+  createRoom, getRoom, getAllRooms, joinRoom, dealHands, drawTile,
   discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, nextRound
 };

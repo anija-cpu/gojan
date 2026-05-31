@@ -8,6 +8,12 @@ const { canNaki, WORDS } = require('./gameLogic');
 const app = express();
 app.use(cors());
 
+app.get('/rooms', (req, res) => {
+  const { getRoom } = require('./roomManager');
+  const rooms = require('./roomManager').getAllRooms();
+  res.json(rooms);
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
