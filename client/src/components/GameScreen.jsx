@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import './GameScreen.css'
 
-const SMALL_KANA = new Set(['ぁ','ぃ','ぅ','ぇ','ぉ','っ','ゃ','ゅ','ょ','ゎ','ゐ','ゑ'])
-
 function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [state, setState] = useState(initialState)
   const [myHand, setMyHand] = useState(() => {
@@ -247,6 +245,8 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
 const rightPlayer = playerCount >= 3 ? getOpponentAtOffset(1) : null
 const topPlayer   = playerCount >= 2 ? getOpponentAtOffset(playerCount >= 3 ? 2 : 1) : null
 const leftPlayer  = playerCount >= 4 ? getOpponentAtOffset(3) : null
+
+const SMALL_KANA = new Set(['ぁ','ぃ','ぅ','ぇ','ぉ','っ','ゃ','ゅ','ょ','ゎ','ゐ','ゑ'])
 
 const TileChar = ({ char }) => (
   <span style={{ borderBottom: SMALL_KANA.has(char) ? '2px solid #1a1a2e' : 'none', paddingBottom: SMALL_KANA.has(char) ? '1px' : '0' }}>

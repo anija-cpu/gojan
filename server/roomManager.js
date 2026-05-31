@@ -139,7 +139,7 @@ function nextRound(roomId) {
   if (!room) return null;
 
   const isGameOver = Object.values(room.scores).some(s => s <= 0);
-  if (isGameOver || room.round >= room.maxRounds) {
+  if (isGameOver) {
     room.phase = 'gameover';
     return { gameover: true };
   }
