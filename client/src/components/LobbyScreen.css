@@ -87,3 +87,55 @@
   background: linear-gradient(135deg, #00cc88, #006644) !important;
   color: #fff !important;
 }
+
+.room-list-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.room-refresh-btn {
+  background: rgba(201,168,76,0.15) !important;
+  border: 1px solid rgba(201,168,76,0.4) !important;
+  font-size: 13px !important;
+  padding: 8px !important;
+}
+
+.room-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 8px;
+}
+
+.room-list-item:hover {
+  background: rgba(201,168,76,0.1);
+  border-color: rgba(201,168,76,0.5);
+}
+
+.room-id {
+  color: #f0d080;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.room-players {
+  color: #c9a84c;
+  font-size: 12px;
+  flex: 1;
+  text-align: center;
+}
+
+.room-count {
+  color: #00ffcc;
+  font-size: 13px;
+  font-weight: 700;
+}

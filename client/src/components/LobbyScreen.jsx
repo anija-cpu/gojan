@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { io } from 'socket.io-client'
 import './LobbyScreen.css'
 
+const SERVER = 'https://gojan-production.up.railway.app'
+
 function LobbyScreen({ onJoin }) {
   const [name, setName] = useState('')
   const [room, setRoom] = useState('')
@@ -10,6 +12,20 @@ function LobbyScreen({ onJoin }) {
   const [isOwner, setIsOwner] = useState(false)
   const [joined, setJoined] = useState(false)
   const [socketRef, setSocketRef] = useState(null)
+  const [roomList, setRoomList] = useState([])
+  const [loadingRooms, setLoadingRooms] = useState(false)
+
+  const fetchRooms = async () => {
+    setLoadingRooms(true)
+    try {
+      const res = await fetch(`${SERVER}/rooms`)
+      const data = await res.json()
+      setRoomList(data)
+    } catch {
+      setRoomList([])
+    }
+    setLoadingRooms(false)
+  }
 
   const handleJoin = () => {
     if (joined) return
@@ -18,7 +34,7 @@ function LobbyScreen({ onJoin }) {
       return
     }
     setStatus('接続中...')
-    const socket = io('https://gojan-production.up.railway.app')
+    const socket = io(SERVER)
 
     let savedState = null
     let savedDraw = null
@@ -65,9 +81,7 @@ function LobbyScreen({ onJoin }) {
   }
 
   const handleStart = () => {
-    if (socketRef) {
-      socketRef.emit('start_game')
-    }
+    if (socketRef) socketRef.emit('start_game')
   }
 
   return (
@@ -92,6 +106,27 @@ function LobbyScreen({ onJoin }) {
             <button className="lobby-btn" onClick={handleJoin}>
               参加する
             </button>
+
+            {/* ルーム一覧 */}
+            <div className="room-list-area">
+              <button className="lobby-btn room-refresh-btn" onClick={fetchRooms}>
+                {loadingRooms ? '読込中...' : '🔄 ルーム一覧を更新'}
+              </button>
+              {roomList.length === 0 && !loadingRooms && (
+                <p className="lobby-status">待機中のルームはありません</p>
+              )}
+              {roomList.map(r => (
+                <div
+                  key={r.roomId}
+                  className="room-list-item"
+                  onClick={() => setRoom(r.roomId)}
+                >
+                  <span className="room-id">🚪 {r.roomId}</span>
+                  <span className="room-players">{r.players.join('、')}</span>
+                  <span className="room-count">{r.playerCount}人</span>
+                </div>
+              ))}
+            </div>
           </>
         ) : (
           <>
