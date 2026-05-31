@@ -25,6 +25,18 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const myIdRef = useRef(myId)
   myIdRef.current = myId
 
+    // BGM
+  useEffect(() => {
+    const audio = new Audio('/bgm.mp3')
+    audio.loop = true
+    audio.volume = 0.5
+    audio.play().catch(() => {})
+    return () => {
+      audio.pause()
+      audio.currentTime = 0
+    }
+  }, [])
+
   useEffect(() => {
     if (!socket) return
 
