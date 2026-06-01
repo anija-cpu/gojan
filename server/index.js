@@ -143,6 +143,8 @@ io.on('connection', (socket) => {
       }
     }
     room.phase = 'finished';
+    console.log('agariWords:', agariWords)
+    console.log('score:', score)
 
     const handChars = room.hands[socket.id].map(t => t.char);
     const meldWords = room.melds[socket.id].map(m => m.join(''));
