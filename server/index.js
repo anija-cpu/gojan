@@ -143,8 +143,6 @@ io.on('connection', (socket) => {
       }
     }
     room.phase = 'finished';
-    console.log('agariWords:', agariWords)
-    console.log('score:', score)
 
     const handChars = room.hands[socket.id].map(t => t.char);
     const meldWords = room.melds[socket.id].map(m => m.join(''));
@@ -154,6 +152,9 @@ io.on('connection', (socket) => {
       agariWords = findPartition(handChars) || [];
     }
     agariWords = [...agariWords, ...meldWords];
+
+    console.log('agariWords:', agariWords)
+    console.log('score:', score)
 
     for (const player of room.players) {
       const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
