@@ -103,12 +103,12 @@ function checkWin(roomId, playerId) {
   return canWin(hand, melds);
 }
 
-function calcPlayerScore(roomId, playerId) {
+function calcPlayerScore(roomId, playerId, groups) {
   const room = rooms[roomId];
   const hand = room.hands[playerId].map(t => t.char);
   const melds = room.melds[playerId];
   const isMenzen = melds.length === 0;
-  return calcScore(hand, melds, isMenzen);
+  return calcScore(hand, melds, isMenzen, groups);
 }
 
 function getPublicState(roomId, requesterId) {

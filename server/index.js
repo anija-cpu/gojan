@@ -132,7 +132,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    const score = calcPlayerScore(roomId, socket.id);
+    const score = calcPlayerScore(roomId, socket.id, groups);
     const playerCount = room.players.length;
     const pointsEach = Math.floor(score / (playerCount - 1));
 
