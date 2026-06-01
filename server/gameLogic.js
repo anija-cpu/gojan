@@ -54,66 +54,74 @@ function partition(chars) {
   return false;
 }
 
-function calcScore(handChars, melds, isMenzen) {
-  const allWords = [];
-  const handWords = findPartition(handChars);
-  if (!handWords) return 0;
-  allWords.push(...handWords, ...melds.map(m => m.join('')));
+const SPECIAL_CHARS = new Set('がぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽぁぃぅぇぉっゃゅょ')
 
-  let score = 0;
-  const lengthScore = { 2: 300, 3: 500, 4: 800, 5: 1200, 6: 1700 };
-  for (const w of allWords) {
-    score += w.length >= 7 ? 2500 : (lengthScore[w.length] || 0);
+function calcWordScore(word) {
+  const lengthScore = {
+    2: 300, 3: 800, 4: 1500, 5: 3000, 6: 5000,
+    7: 8000, 8: 9000, 9: 10000, 10: 15000,
+    11: 18000, 12: 22000, 13: 26000, 14: 32000
+  }
+  const base = lengthScore[word.length] || 0
+  const specialBonus = [...word].filter(c => SPECIAL_CHARS.has(c)).length * 500
+  return base + specialBonus
+}
+
+function calcScore(handChars, melds, isMenzen) {
+  // 天和チェック
+  if (handChars.length === 14 && melds.length === 0) {
+    const word = handChars.join('')
+    if (WORDS.has(word)) return 32000
   }
 
-  if (isMenzen) score += 500;
-  if (allWords.some(w => w.length >= 7)) score += 1000;
-  if (allWords.length === 2) score += 1500;
-  if (allWords.length === 3) score += 800;
+  const allWords = []
+  const handWords = findPartition(handChars)
+  if (!handWords) return 0
+  allWords.push(...handWords, ...melds.map(m => m.join('')))
 
-  const allChars = allWords.join('').split('');
-  if (allWords.length === 7 && allWords.every(w => w.length === 2)) score += 2000;
-  if (new Set(allChars).size === allChars.length) score += 3000;
-  if (allWords.length === 1 && allWords[0].length === 14) score = 32000;
+  let score = allWords.reduce((s, w) => s + calcWordScore(w), 0)
 
-  return score;
-}
+  // 組み合わせボーナス
+  const lengths = allWords.map(w => w.length).sort((a, b) => a - b)
+  const key = lengths.join(',')
 
-function calcWordScore(word) {
-  const len = word.length;
-  if (len >= 7) return 2500;
-  const scores = { 2: 300, 3: 500, 4: 800, 5: 1200, 6: 1700 };
-  return scores[len] || 0;
-}
+  const bonuses = {
+    '2,3,3,3,3': 2000,   // へいわ
+    '2,3,4,5':   6000,   // かいだん
+    '2,4,4,4':   5000,   // さんし
+    '2,6,6':     8000,   // むつー
+    '6,8':       12000,  // はむ
+    '5,9':       12000,  // ごくう
+    '4,10':      12000,  // しじゅう
+    '3,11':      12000,  // ごくう
+  }
 
-function calcWordScore(word) {
-  const len = word.length;
-  if (len >= 7) return 2500;
-  const scores = { 2: 300, 3: 500, 4: 800, 5: 1200, 6: 1700 };
-  return scores[len] || 0;
+  if (bonuses[key]) score += bonuses[key]
+
+  return score
 }
 
 function findPartition(chars) {
-  if (chars.length === 0) return [];
-  let bestResult = null;
-  let bestScore = -1;
+  if (chars.length === 0) return []
+  let bestResult = null
+  let bestScore = -1
   for (let start = 0; start < chars.length; start++) {
     for (let len = 2; len <= Math.min(14, chars.length - start); len++) {
-      const word = chars.slice(start, start + len).join('');
+      const word = chars.slice(start, start + len).join('')
       if (WORDS.has(word)) {
-        const remaining = [...chars.slice(0, start), ...chars.slice(start + len)];
-        const rest = findPartition(remaining);
+        const remaining = [...chars.slice(0, start), ...chars.slice(start + len)]
+        const rest = findPartition(remaining)
         if (rest !== null) {
-          const totalScore = calcWordScore(word) + rest.reduce((s, w) => s + calcWordScore(w), 0);
+          const totalScore = calcWordScore(word) + rest.reduce((s, w) => s + calcWordScore(w), 0)
           if (totalScore > bestScore) {
-            bestScore = totalScore;
-            bestResult = [word, ...rest];
+            bestScore = totalScore
+            bestResult = [word, ...rest]
           }
         }
       }
     }
   }
-  return bestResult;
+  return bestResult
 }
 
 function canNaki(hand, discardChar) {
