@@ -155,6 +155,8 @@ io.on('connection', (socket) => {
 
     console.log('agariWords:', agariWords)
     console.log('score:', score)
+    console.log('handChars:', handChars)
+    console.log('melds:', room.melds[socket.id])
 
     for (const player of room.players) {
       const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
