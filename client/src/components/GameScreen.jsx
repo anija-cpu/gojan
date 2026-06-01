@@ -318,11 +318,9 @@ const TileChar = ({ char }) => (
               ))}
             </div>
             <div className="result-buttons">
-              {gameOver.state.players[0]?.id === myId &&
-                <button className="result-btn next-btn" onClick={() => socket.emit('next_round')}>
-                  次の局へ
-                </button>
-              }
+              <button className="result-btn next-btn" onClick={() => socket.emit('next_round')}>
+                次の局へ
+              </button>
               <button className="result-btn" onClick={() => { setGameOver(null); window.location.reload() }}>
                 ロビーに戻る
               </button>
