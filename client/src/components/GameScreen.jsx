@@ -318,7 +318,7 @@ const TileChar = ({ char }) => (
               ))}
             </div>
             <div className="result-buttons">
-              {gameOver.state.players[0]?.id === socket?.id &&
+              {gameOver.state.players[0]?.id === myId &&
                 <button className="result-btn next-btn" onClick={() => socket.emit('next_round')}>
                   次の局へ
                 </button>
