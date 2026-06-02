@@ -497,7 +497,11 @@ const TileChar = ({ char }) => (
                       {c.word.join('')}
                     </button>
                   ))}
-                  <button className="action-btn naki-skip-btn" onClick={() => { setNakiOptions(null); setCountdown(null) }}>
+                  <button className="action-btn naki-skip-btn" onClick={() => {
+                    setNakiOptions(null)
+                    setCountdown(null)
+                    socket.emit('naki_skip')
+                  }}>
                     スキップ
                   </button>
                 </div>
