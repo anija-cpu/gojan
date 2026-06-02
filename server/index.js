@@ -117,20 +117,29 @@ io.on('connection', (socket) => {
 
     let win = false;
 
-    if (groups && groups.length > 0) {
-      win = groups.every(w => w.length >= 2 && WORDS.has(w));
-      if (!win) {
-        const invalid = groups.filter(w => !WORDS.has(w) || w.length < 2);
-        socket.emit('agari_failed', `辞書にない単語: ${invalid.join('、')}`);
-        return;
-      }
-    } else {
-      win = checkWin(roomId, socket.id);
-      if (!win) {
-        socket.emit('agari_failed', 'アガリ条件を満たしていません');
-        return;
-      }
-    }
+  if (groups && groups.length > 0) {
+  const allHand = room.hands[socket.id]
+  const drawnCount = allHand.length
+  const totalChars = groups.reduce((s, w) => s + w.length, 0)
+  
+  if (totalChars !== drawnCount) {
+    socket.emit('agari_failed', `手牌と文字数が合いません（手牌${drawnCount}枚、グループ${totalChars}文字）`)
+    return
+  }
+  
+  win = groups.every(w => w.length >= 2 && WORDS.has(w))
+  if (!win) {
+    const invalid = groups.filter(w => !WORDS.has(w) || w.length < 2)
+    socket.emit('agari_failed', `辞書にない単語: ${invalid.join('、')}`)
+    return
+  }
+} else {
+  win = checkWin(roomId, socket.id)
+  if (!win) {
+    socket.emit('agari_failed', 'アガリ条件を満たしていません')
+    return
+  }
+}
 
     const score = calcPlayerScore(roomId, socket.id, groups);
     const playerCount = room.players.length;
