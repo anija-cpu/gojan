@@ -498,6 +498,7 @@ const TileChar = ({ char }) => (
                     </button>
                   ))}
                   <button className="action-btn naki-skip-btn" onClick={() => {
+                    console.log('naki skip clicked')
                     setNakiOptions(null)
                     setCountdown(null)
                     socket.emit('naki_skip')
