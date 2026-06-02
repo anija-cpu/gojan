@@ -94,7 +94,36 @@ io.on('connection', (socket) => {
         }
       }
     }, waitTime);
+    // タイマーをルームに保存
+    room._nakiTimer = timer;
   });
+
+  socket.on('naki_skip', () => {
+    // 何もしない（タイマーは自然に終わるが、lastDiscardのチェックで処理される）
+  const roomId = socket.data.roomId;
+  const room = getRoom(roomId);
+  if (!room) return;
+  // 全員スキップしたらタイマーをキャンセルして即ツモ
+  if (!room._skipPlayers) room._skipPlayers = new Set();
+  room._skipPlayers.add(socket.id);
+  const otherPlayers = room.players.filter(p => p.id !== room.lastDiscardPlayer);
+  if (room._skipPlayers.size >= otherPlayers.length) {
+    clearTimeout(room._nakiTimer);
+    room._skipPlayers = null;
+    // 即ツモ処理
+    const nextPlayer = room.players[room.currentTurn];
+    if (!nextPlayer || room.wall.length === 0) return;
+    const drawn = drawTile(roomId, nextPlayer.id);
+    for (const player of room.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (!ps) continue;
+      const st = getPublicState(roomId, player.id);
+      if (player.id === nextPlayer.id) {
+        ps.emit('drawn', { tile: drawn, state: st });
+      }
+    }
+  }
+});
 
   socket.on('naki', ({ tileIds }) => {
     const roomId = socket.data.roomId;

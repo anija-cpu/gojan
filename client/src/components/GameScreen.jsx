@@ -405,9 +405,13 @@ const TileChar = ({ char }) => (
                     <div className="countdown-bar" style={{ width: `${(countdown / 15) * 100}%` }} />
                     <span className="countdown-num">{countdown}</span>
                   </div>
-                  <button className="skip-btn" onClick={() => { setCountdown(null); setNakiOptions(null) }}>
-                    鳴かない
-                  </button>
+                  <button className="skip-btn" onClick={() => {
+                    setCountdown(null)
+                    setNakiOptions(null)
+                    socket.emit('naki_skip')
+                    }}>
+                      鳴かない
+                    </button>
                 </div>
               )}
             </div>
