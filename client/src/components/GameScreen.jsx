@@ -406,12 +406,13 @@ const TileChar = ({ char }) => (
                     <span className="countdown-num">{countdown}</span>
                   </div>
                   <button className="skip-btn" onClick={() => {
+                    console.log('skip clicked')
                     setCountdown(null)
                     setNakiOptions(null)
                     socket.emit('naki_skip')
-                    }}>
-                      鳴かない
-                    </button>
+                  }}>
+                    鳴かない
+                  </button>
                 </div>
               )}
             </div>
