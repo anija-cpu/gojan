@@ -98,6 +98,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('naki_skip', () => {
+    console.log('naki_skip received:', socket.id);
+    // ...
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
     if (!room) return;
