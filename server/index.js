@@ -9,7 +9,6 @@ const app = express();
 app.use(cors());
 
 app.get('/rooms', (req, res) => {
-  const { getRoom } = require('./roomManager');
   const rooms = require('./roomManager').getAllRooms();
   res.json(rooms);
 });
@@ -73,8 +72,8 @@ io.on('connection', (socket) => {
 
     const discardedTileId = tile.id;
     const waitTime = nakiPossible ? 15000 : 1000;
+    room._skipPlayers = null;
     const timer = setTimeout(() => {
-    setTimeout(() => {
       const updatedRoom = getRoom(roomId);
       if (!updatedRoom) return;
       if (updatedRoom.phase === 'finished') return;
@@ -95,36 +94,32 @@ io.on('connection', (socket) => {
         }
       }
     }, waitTime);
-    // タイマーをルームに保存
     room._nakiTimer = timer;
   });
 
   socket.on('naki_skip', () => {
-    // 何もしない（タイマーは自然に終わるが、lastDiscardのチェックで処理される）
-  const roomId = socket.data.roomId;
-  const room = getRoom(roomId);
-  if (!room) return;
-  // 全員スキップしたらタイマーをキャンセルして即ツモ
-  if (!room._skipPlayers) room._skipPlayers = new Set();
-  room._skipPlayers.add(socket.id);
-  const otherPlayers = room.players.filter(p => p.id !== room.lastDiscardPlayer);
-  if (room._skipPlayers.size >= otherPlayers.length) {
-    clearTimeout(room._nakiTimer);
-    room._skipPlayers = null;
-    // 即ツモ処理
-    const nextPlayer = room.players[room.currentTurn];
-    if (!nextPlayer || room.wall.length === 0) return;
-    const drawn = drawTile(roomId, nextPlayer.id);
-    for (const player of room.players) {
-      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
-      if (!ps) continue;
-      const st = getPublicState(roomId, player.id);
-      if (player.id === nextPlayer.id) {
-        ps.emit('drawn', { tile: drawn, state: st });
+    const roomId = socket.data.roomId;
+    const room = getRoom(roomId);
+    if (!room) return;
+    if (!room._skipPlayers) room._skipPlayers = new Set();
+    room._skipPlayers.add(socket.id);
+    const otherPlayers = room.players.filter(p => p.id !== room.lastDiscardPlayer);
+    if (room._skipPlayers.size >= otherPlayers.length) {
+      clearTimeout(room._nakiTimer);
+      room._skipPlayers = null;
+      const nextPlayer = room.players[room.currentTurn];
+      if (!nextPlayer || room.wall.length === 0) return;
+      const drawn = drawTile(roomId, nextPlayer.id);
+      for (const player of room.players) {
+        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+        if (!ps) continue;
+        const st = getPublicState(roomId, player.id);
+        if (player.id === nextPlayer.id) {
+          ps.emit('drawn', { tile: drawn, state: st });
+        }
       }
     }
-  }
-});
+  });
 
   socket.on('naki', ({ tileIds }) => {
     const roomId = socket.data.roomId;
@@ -147,29 +142,29 @@ io.on('connection', (socket) => {
 
     let win = false;
 
-  if (groups && groups.length > 0) {
-  const allHand = room.hands[socket.id]
-  const drawnCount = allHand.length
-  const totalChars = groups.reduce((s, w) => s + w.length, 0)
-  
-  if (totalChars !== drawnCount) {
-    socket.emit('agari_failed', `手牌と文字数が合いません（手牌${drawnCount}枚、グループ${totalChars}文字）`)
-    return
-  }
-  
-  win = groups.every(w => w.length >= 2 && WORDS.has(w))
-  if (!win) {
-    const invalid = groups.filter(w => !WORDS.has(w) || w.length < 2)
-    socket.emit('agari_failed', `辞書にない単語: ${invalid.join('、')}`)
-    return
-  }
-} else {
-  win = checkWin(roomId, socket.id)
-  if (!win) {
-    socket.emit('agari_failed', 'アガリ条件を満たしていません')
-    return
-  }
-}
+    if (groups && groups.length > 0) {
+      const allHand = room.hands[socket.id];
+      const drawnCount = allHand.length;
+      const totalChars = groups.reduce((s, w) => s + w.length, 0);
+
+      if (totalChars !== drawnCount) {
+        socket.emit('agari_failed', `手牌と文字数が合いません（手牌${drawnCount}枚、グループ${totalChars}文字）`);
+        return;
+      }
+
+      win = groups.every(w => w.length >= 2 && WORDS.has(w));
+      if (!win) {
+        const invalid = groups.filter(w => !WORDS.has(w) || w.length < 2);
+        socket.emit('agari_failed', `辞書にない単語: ${invalid.join('、')}`);
+        return;
+      }
+    } else {
+      win = checkWin(roomId, socket.id);
+      if (!win) {
+        socket.emit('agari_failed', 'アガリ条件を満たしていません');
+        return;
+      }
+    }
 
     const score = calcPlayerScore(roomId, socket.id, groups);
     const playerCount = room.players.length;
@@ -191,11 +186,6 @@ io.on('connection', (socket) => {
       agariWords = findPartition(handChars) || [];
     }
     agariWords = [...agariWords, ...meldWords];
-
-    console.log('agariWords:', agariWords)
-    console.log('score:', score)
-    console.log('handChars:', handChars)
-    console.log('melds:', room.melds[socket.id])
 
     for (const player of room.players) {
       const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
@@ -243,7 +233,6 @@ io.on('connection', (socket) => {
     const room = getRoom(roomId);
     if (!room) return;
     if (room.players[0].id !== socket.id) return;
-    console.log('next_round players:', room.players.map(p => p.name));
 
     const result = nextRound(roomId);
     if (!result) return;
@@ -292,5 +281,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(process.env.PORT || 3001, () => {
-    console.log('サーバー起動: http://localhost:3001');
+  console.log('サーバー起動: http://localhost:3001');
 });
