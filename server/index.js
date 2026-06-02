@@ -73,6 +73,7 @@ io.on('connection', (socket) => {
 
     const discardedTileId = tile.id;
     const waitTime = nakiPossible ? 15000 : 1000;
+    const timer = setTimeout(() => {
     setTimeout(() => {
       const updatedRoom = getRoom(roomId);
       if (!updatedRoom) return;
