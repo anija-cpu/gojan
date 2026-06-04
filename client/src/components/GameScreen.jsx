@@ -12,6 +12,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [drawnTile, setDrawnTile] = useState(firstDraw?.tile || null)
   const [selectedTile, setSelectedTile] = useState(null)
   const [nakiOptions, setNakiOptions] = useState(null)
+  const [ronAvailable, setRonAvailable] = useState(false)
   const [message, setMessage] = useState('ゲーム開始！')
   const [dragIdx, setDragIdx] = useState(null)
   const [dragArea, setDragArea] = useState(null)
@@ -93,6 +94,27 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
       setMessage(`${name} が鳴きました`)
     })
 
+    socket.on('ron_available', ({ tile }) => {
+      setRonAvailable(true)
+      setMessage(`ロンできます！「${tile.char}」でアガリ`)
+      setCountdown(15)
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            setRonAvailable(false)
+            return null
+          }
+          return prev - 1
+        })
+      }, 1000)
+    })
+
+    socket.on('ron_failed', (msg) => {
+      setMessage(msg)
+      setRonAvailable(false)
+    })
+
     socket.on('agari_failed', (msg) => setMessage(msg))
 
     socket.on('game_end', ({ winnerId, score, agariWords, state }) => {
@@ -111,6 +133,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
       setSpaces(new Set())
       setGameOver(null)
       setCountdown(null)
+      setRonAvailable(false)
       setMessage(`第${state.round}局 開始！`)
     })
 
@@ -119,6 +142,8 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
       socket.off('discarded')
       socket.off('naki_available')
       socket.off('naki_done')
+      socket.off('ron_available')
+      socket.off('ron_failed')
       socket.off('agari_failed')
       socket.off('game_end')
       socket.off('ryukyoku')
@@ -295,6 +320,7 @@ const TileChar = ({ char }) => (
         <div className="result-overlay">
           <div className="result-box">
             <h2 className="result-title">
+              {gameOver.isRon ? '🀄 ロン！' : '🎉 ツモ！'}{' '}
               {gameOver.state.players.find(p => p.id === gameOver.winnerId)?.name} のアガリ！
             </h2>
             {gameOver.agariWords.length > 0 && (
@@ -500,6 +526,28 @@ const TileChar = ({ char }) => (
                   <button className="action-btn naki-skip-btn" onClick={() => {
                     console.log('naki skip clicked')
                     setNakiOptions(null)
+                    setCountdown(null)
+                    socket.emit('naki_skip')
+                  }}>
+                    スキップ
+                  </button>
+                </div>
+              )}
+              {ronAvailable && (
+                <div className="naki-candidates">
+                  <button
+                    className="action-btn"
+                    style={{ background: 'linear-gradient(135deg,#c0392b,#e74c3c)', color: '#fff', fontSize: '1.1rem', fontWeight: 'bold', padding: '10px 32px', borderRadius: 8 }}
+                    onClick={() => {
+                      socket.emit('ron')
+                      setRonAvailable(false)
+                      setCountdown(null)
+                    }}
+                  >
+                    ロン！
+                  </button>
+                  <button className="action-btn naki-skip-btn" onClick={() => {
+                    setRonAvailable(false)
                     setCountdown(null)
                     socket.emit('naki_skip')
                   }}>

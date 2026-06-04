@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, getRoom, nextRound } = require('./roomManager');
+const { joinRoom, dealHands, drawTile, discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, getRoom, nextRound, checkRon, calcRonPlayerScore } = require('./roomManager');
 const { canNaki, WORDS } = require('./gameLogic');
 
 const app = express();
@@ -59,9 +59,19 @@ io.on('connection', (socket) => {
     }
 
     let nakiPossible = false;
+    let ronPossible = false;
     for (const player of room.players) {
       if (player.id === socket.id) continue;
       const hand = room.hands[player.id];
+
+      // ロン判定
+      if (checkRon(roomId, player.id, tile.char)) {
+        ronPossible = true;
+        const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+        if (ps) ps.emit('ron_available', { tile });
+      }
+
+      // 鳴き判定
       const result = canNaki(hand, tile.char);
       if (result.possible) {
         nakiPossible = true;
@@ -71,7 +81,7 @@ io.on('connection', (socket) => {
     }
 
     const discardedTileId = tile.id;
-    const waitTime = nakiPossible ? 15000 : 1000;
+    const waitTime = (nakiPossible || ronPossible) ? 15000 : 1000;
     room._skipPlayers = null;
     const timer = setTimeout(() => {
       const updatedRoom = getRoom(roomId);
@@ -95,6 +105,60 @@ io.on('connection', (socket) => {
       }
     }, waitTime);
     room._nakiTimer = timer;
+  });
+
+  socket.on('ron', () => {
+    const roomId = socket.data.roomId;
+    const room = getRoom(roomId);
+    if (!room) return;
+    if (room.phase === 'finished') return;
+
+    const lastDiscard = room.lastDiscard;
+    if (!lastDiscard) {
+      socket.emit('ron_failed', 'ロンできる牌がありません');
+      return;
+    }
+
+    if (!checkRon(roomId, socket.id, lastDiscard.char)) {
+      socket.emit('ron_failed', 'ロン条件を満たしていません');
+      return;
+    }
+
+    const score = calcRonPlayerScore(roomId, socket.id, lastDiscard.char);
+    const playerCount = room.players.length;
+    const pointsEach = Math.floor(score / (playerCount - 1));
+
+    room.scores[socket.id] += score;
+    for (const player of room.players) {
+      if (player.id !== socket.id) {
+        room.scores[player.id] -= pointsEach;
+      }
+    }
+    room.phase = 'finished';
+
+    // アガリ単語計算（捨て牌を手牌に加えた状態）
+    const { findPartition } = require('./gameLogic');
+    const handChars = room.hands[socket.id].map(t => t.char);
+    const meldWords = room.melds[socket.id].map(m => m.join(''));
+    const agariWords = findPartition([...handChars, lastDiscard.char]) || [];
+
+    // タイマーをキャンセル
+    if (room._nakiTimer) {
+      clearTimeout(room._nakiTimer);
+      room._nakiTimer = null;
+    }
+
+    for (const player of room.players) {
+      const ps = [...io.sockets.sockets.values()].find(s => s.id === player.id);
+      if (ps) ps.emit('game_end', {
+        winnerId: socket.id,
+        score,
+        agariWords: [...agariWords, ...meldWords],
+        isRon: true,
+        ronTile: lastDiscard,
+        state: getPublicState(roomId, player.id)
+      });
+    }
   });
 
   socket.on('naki_skip', () => {

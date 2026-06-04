@@ -1,4 +1,4 @@
-const { buildTiles, shuffle, canWin, calcScore, canNaki } = require('./gameLogic');
+const { buildTiles, shuffle, canWin, calcScore, canNaki, canRon, calcRonScore } = require('./gameLogic');
 
 const rooms = {};
 
@@ -166,6 +166,20 @@ function nextRound(roomId) {
   return { gameover: false };
 }
 
+function checkRon(roomId, playerId, discardChar) {
+  const room = rooms[roomId];
+  const hand = room.hands[playerId];
+  const melds = room.melds[playerId];
+  return canRon(hand, discardChar, melds);
+}
+
+function calcRonPlayerScore(roomId, playerId, discardChar) {
+  const room = rooms[roomId];
+  const hand = room.hands[playerId];
+  const melds = room.melds[playerId];
+  return calcRonScore(hand, discardChar, melds);
+}
+
 function getAllRooms() {
   return Object.entries(rooms)
     .filter(([id, room]) => room.phase === 'waiting')
@@ -178,5 +192,6 @@ function getAllRooms() {
 
 module.exports = {
   createRoom, getRoom, getAllRooms, joinRoom, dealHands, drawTile,
-  discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, nextRound
+  discardTile, doNaki, checkWin, calcPlayerScore, getPublicState, nextRound,
+  checkRon, calcRonPlayerScore
 };

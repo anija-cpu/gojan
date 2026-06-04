@@ -124,6 +124,17 @@ function findPartition(chars) {
   return bestResult
 }
 
+function canRon(hand, discardChar, melds) {
+  const handChars = hand.map(t => t.char);
+  return canWin([...handChars, discardChar], melds);
+}
+
+function calcRonScore(hand, discardChar, melds) {
+  const handChars = hand.map(t => t.char);
+  const isMenzen = melds.length === 0;
+  return calcScore([...handChars, discardChar], melds, isMenzen);
+}
+
 function canNaki(hand, discardChar) {
   const combined = [...hand.map(t => t.char), discardChar];
   const results = [];
@@ -146,4 +157,4 @@ function canNaki(hand, discardChar) {
   return { possible: true, candidates: results };
 }
 
-module.exports = { buildTiles, shuffle, canWin, calcScore, canNaki, findPartition, WORDS };
+module.exports = { buildTiles, shuffle, canWin, calcScore, canNaki, canRon, calcRonScore, findPartition, WORDS };
