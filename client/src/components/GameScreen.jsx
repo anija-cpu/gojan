@@ -117,11 +117,11 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
 
     socket.on('agari_failed', (msg) => setMessage(msg))
 
-    socket.on('game_end', ({ winnerId, score, agariWords, state }) => {
+    socket.on('game_end', ({ winnerId, score, agariWords, isRon, state }) => {
       setState(state)
       const name = state.players.find(p => p.id === winnerId)?.name || ''
       setMessage(`🎉 ${name} のアガリ！ +${score}点`)
-      setGameOver({ winnerId, score, agariWords: agariWords || [], state })
+      setGameOver({ winnerId, score, agariWords: agariWords || [], isRon: !!isRon, state })
     })
 
     socket.on('ryukyoku', () => setMessage('流局！山牌がなくなりました'))
@@ -539,7 +539,18 @@ const TileChar = ({ char }) => (
                     className="action-btn"
                     style={{ background: 'linear-gradient(135deg,#c0392b,#e74c3c)', color: '#fff', fontSize: '1.1rem', fontWeight: 'bold', padding: '10px 32px', borderRadius: 8 }}
                     onClick={() => {
-                      socket.emit('ron')
+                      // 区切り線をもとにグループ化（ロン牌は末尾に追加）
+                      const allTiles = drawnTile ? [...myHand, drawnTile] : [...myHand]
+                      const groups = []
+                      let current = []
+                      allTiles.forEach((tile, idx) => {
+                        current.push(tile.char)
+                        if (spaces.has(idx + 1) || idx === allTiles.length - 1) {
+                          if (current.length > 0) groups.push(current.join(''))
+                          current = []
+                        }
+                      })
+                      socket.emit('ron', { groups })
                       setRonAvailable(false)
                       setCountdown(null)
                     }}

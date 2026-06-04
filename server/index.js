@@ -107,7 +107,7 @@ io.on('connection', (socket) => {
     room._nakiTimer = timer;
   });
 
-  socket.on('ron', () => {
+  socket.on('ron', ({ groups } = {}) => {
     const roomId = socket.data.roomId;
     const room = getRoom(roomId);
     if (!room) return;
@@ -119,12 +119,48 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (!checkRon(roomId, socket.id, lastDiscard.char)) {
-      socket.emit('ron_failed', 'ロン条件を満たしていません');
-      return;
+    const handChars = room.hands[socket.id].map(t => t.char);
+    const meldWords = room.melds[socket.id].map(m => m.join(''));
+    let agariWords;
+
+    if (groups && groups.length > 0) {
+      // 区切り線ベースの検証：手牌+ロン牌の文字数と一致するか
+      const totalChars = groups.reduce((s, w) => s + w.length, 0);
+      const expectedChars = handChars.length + 1; // +1はロン牌
+      if (totalChars !== expectedChars) {
+        socket.emit('ron_failed', `手牌と文字数が合いません（手牌+ロン牌${expectedChars}文字、グループ${totalChars}文字）`);
+        return;
+      }
+      // 全グループが辞書に存在するか
+      const invalid = groups.filter(w => w.length < 2 || !WORDS.has(w));
+      if (invalid.length > 0) {
+        socket.emit('ron_failed', `辞書にない単語: ${invalid.join('、')}`);
+        return;
+      }
+      // ロン牌が少なくとも1グループに含まれているか
+      const allGroupChars = groups.join('');
+      const handOnly = handChars.join('');
+      // 簡易チェック：グループ全体の文字列が手牌+ロン牌と文字集合として一致
+      const sortStr = s => s.split('').sort().join('');
+      if (sortStr(allGroupChars) !== sortStr(handOnly + lastDiscard.char)) {
+        socket.emit('ron_failed', 'グループの文字が手牌+ロン牌と一致しません');
+        return;
+      }
+      agariWords = groups;
+    } else {
+      // 区切り線なし → 自動判定
+      if (!checkRon(roomId, socket.id, lastDiscard.char)) {
+        socket.emit('ron_failed', 'ロン条件を満たしていません');
+        return;
+      }
+      const { findPartition } = require('./gameLogic');
+      agariWords = findPartition([...handChars, lastDiscard.char]) || [];
     }
 
-    const score = calcRonPlayerScore(roomId, socket.id, lastDiscard.char);
+    const { calcScore } = require('./gameLogic');
+    const isMenzen = room.melds[socket.id].length === 0;
+    const score = calcScore([...handChars, lastDiscard.char], room.melds[socket.id], isMenzen);
+
     const playerCount = room.players.length;
     const pointsEach = Math.floor(score / (playerCount - 1));
 
@@ -135,12 +171,6 @@ io.on('connection', (socket) => {
       }
     }
     room.phase = 'finished';
-
-    // アガリ単語計算（捨て牌を手牌に加えた状態）
-    const { findPartition } = require('./gameLogic');
-    const handChars = room.hands[socket.id].map(t => t.char);
-    const meldWords = room.melds[socket.id].map(m => m.join(''));
-    const agariWords = findPartition([...handChars, lastDiscard.char]) || [];
 
     // タイマーをキャンセル
     if (room._nakiTimer) {
