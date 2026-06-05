@@ -12,7 +12,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [drawnTile, setDrawnTile] = useState(firstDraw?.tile || null)
   const [selectedTile, setSelectedTile] = useState(null)
   const [nakiOptions, setNakiOptions] = useState(null)
-  const [ronAvailable, setRonAvailable] = useState(false)
+  const [ronAvailable, setRonAvailable] = useState(null) // null or tile object
   const [message, setMessage] = useState('ゲーム開始！')
   const [dragIdx, setDragIdx] = useState(null)
   const [dragArea, setDragArea] = useState(null)
@@ -95,14 +95,14 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
     })
 
     socket.on('ron_available', ({ tile }) => {
-      setRonAvailable(true)
+      setRonAvailable(tile)
       setMessage(`ロンできます！「${tile.char}」でアガリ`)
       setCountdown(15)
       const timer = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
             clearInterval(timer)
-            setRonAvailable(false)
+            setRonAvailable(null)
             return null
           }
           return prev - 1
@@ -112,7 +112,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
 
     socket.on('ron_failed', (msg) => {
       setMessage(msg)
-      setRonAvailable(false)
+      setRonAvailable(null)
     })
 
     socket.on('agari_failed', (msg) => setMessage(msg))
@@ -133,7 +133,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
       setSpaces(new Set())
       setGameOver(null)
       setCountdown(null)
-      setRonAvailable(false)
+      setRonAvailable(null)
       setMessage(`第${state.round}局 開始！`)
     })
 
@@ -539,26 +539,29 @@ const TileChar = ({ char }) => (
                     className="action-btn"
                     style={{ background: 'linear-gradient(135deg,#c0392b,#e74c3c)', color: '#fff', fontSize: '1.1rem', fontWeight: 'bold', padding: '10px 32px', borderRadius: 8 }}
                     onClick={() => {
-                      // 区切り線をもとにグループ化（ロン牌は末尾に追加）
+                      // 手牌 + ロン牌を末尾に加えてグループ化
                       const allTiles = drawnTile ? [...myHand, drawnTile] : [...myHand]
+                      // ロン牌を末尾に追加（仮想タイル）
+                      const ronTile = { id: '__ron__', char: ronAvailable.char }
+                      const tilesWithRon = [...allTiles, ronTile]
                       const groups = []
                       let current = []
-                      allTiles.forEach((tile, idx) => {
+                      tilesWithRon.forEach((tile, idx) => {
                         current.push(tile.char)
-                        if (spaces.has(idx + 1) || idx === allTiles.length - 1) {
+                        if (spaces.has(idx + 1) || idx === tilesWithRon.length - 1) {
                           if (current.length > 0) groups.push(current.join(''))
                           current = []
                         }
                       })
                       socket.emit('ron', { groups })
-                      setRonAvailable(false)
+                      setRonAvailable(null)
                       setCountdown(null)
                     }}
                   >
                     ロン！
                   </button>
                   <button className="action-btn naki-skip-btn" onClick={() => {
-                    setRonAvailable(false)
+                    setRonAvailable(null)
                     setCountdown(null)
                     socket.emit('naki_skip')
                   }}>
