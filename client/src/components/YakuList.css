@@ -112,21 +112,22 @@
   border-radius: 6px;
   padding: 8px 10px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.score-len {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.score-dots {
-  font-size: 9px;
+.score-dots-line {
+  font-size: 11px;
   color: rgba(201, 168, 76, 0.6);
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.score-bottom-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
 }
 
 .score-lennum {

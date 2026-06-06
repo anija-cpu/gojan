@@ -17,13 +17,15 @@ const WORD_SCORES = [
 ]
 
 const COMBO_YAKU = [
-  { name: '天和', pattern: '14文字1単語', bonus: 32000, desc: '14文字すべて1つの単語でアガリ', example: '(14文字の単語)' },
-  { name: 'かいだん', pattern: '2+3+4+5', bonus: 6000, desc: '2・3・4・5文字の単語でアガリ', example: 'あ・いぬ・ねこ・さかな' },
-  { name: 'むつー', pattern: '2+6+6', bonus: 8000, desc: '2・6・6文字の単語でアガリ', example: 'ふ+6文字+6文字' },
-  { name: 'さんし', pattern: '2+4+4+4', bonus: 5000, desc: '2・4・4・4文字の単語でアガリ', example: 'ふ+4文字×3' },
-  { name: 'へいわ', pattern: '2+3+3+3+3', bonus: 2000, desc: '2・3・3・3・3文字の単語でアガリ', example: 'い+3文字×4' },
-  { name: 'ごくう', pattern: '5+9 / 3+11', bonus: 12000, desc: '5+9文字 または 3+11文字でアガリ', example: '5文字+9文字' },
-  { name: 'しじゅう', pattern: '4+10 / 6+8', bonus: 12000, desc: '4+10文字 または 6+8文字でアガリ', example: '4文字+10文字' },
+  { name: 'やくまん', pattern: '14文字1単語', bonus: 32000, desc: '14文字すべて1つの単語でアガリ' },
+  { name: 'かいだん', pattern: '2+3+4+5', bonus: 6000, desc: '2・3・4・5文字の単語でアガリ' },
+  { name: 'むつー',   pattern: '2+6+6',   bonus: 8000, desc: '2・6・6文字の単語でアガリ' },
+  { name: 'さんし',   pattern: '2+4+4+4', bonus: 5000, desc: '2・4・4・4文字の単語でアガリ' },
+  { name: 'へいわ',   pattern: '2+3+3+3+3', bonus: 2000, desc: '2・3・3・3・3文字の単語でアガリ' },
+  { name: 'ごくう',   pattern: '5+9',     bonus: 12000, desc: '5+9文字の単語でアガリ' },
+  { name: 'すごい',   pattern: '3+11',    bonus: 12000, desc: '3+11文字の単語でアガリ' },
+  { name: 'しじゅう', pattern: '4+10',    bonus: 12000, desc: '4+10文字の単語でアガリ' },
+  { name: 'はむ',     pattern: '6+8',     bonus: 12000, desc: '6+8文字の単語でアガリ' },
 ]
 
 function YakuList({ onClose, inGame = false }) {
@@ -42,11 +44,11 @@ function YakuList({ onClose, inGame = false }) {
             <div className="score-grid">
               {WORD_SCORES.map(({ len, score }) => (
                 <div key={len} className="score-row">
-                  <div className="score-len">
-                    <span className="score-dots">{'□'.repeat(Math.min(len, 7))}{len > 7 ? '…' : ''}</span>
+                  <div className="score-dots-line">{'□'.repeat(Math.min(len, 6))}{len > 6 ? '…' : ''}</div>
+                  <div className="score-bottom-line">
                     <span className="score-lennum">{len}文字</span>
+                    <span className="score-val">{score.toLocaleString()}<span className="score-unit">点</span></span>
                   </div>
-                  <div className="score-val">{score.toLocaleString()}<span className="score-unit">点</span></div>
                 </div>
               ))}
             </div>
