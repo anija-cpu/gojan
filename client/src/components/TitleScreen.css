@@ -89,3 +89,8 @@
   border-color: #c9a84c;
   box-shadow: 0 0 16px rgba(201, 168, 76, 0.3);
 }
+
+.title-sub-btns {
+  display: flex;
+  gap: 12px;
+}
