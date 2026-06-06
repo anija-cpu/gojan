@@ -13,6 +13,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [selectedTile, setSelectedTile] = useState(null)
   const [nakiOptions, setNakiOptions] = useState(null)
   const [ronAvailable, setRonAvailable] = useState(null) // null or tile object
+  const [wordsSet, setWordsSet] = useState(null) // クライアント側辞書
   const [message, setMessage] = useState('ゲーム開始！')
   const [dragIdx, setDragIdx] = useState(null)
   const [dragArea, setDragArea] = useState(null)
@@ -25,6 +26,32 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   handRef.current = myHand
   const myIdRef = useRef(myId)
   myIdRef.current = myId
+
+  // 区切り線ベースでロン宣言できるか判定
+  const ronCanDeclare = (() => {
+    if (!ronAvailable || !wordsSet) return false
+    const allTiles = drawnTile ? [...myHand, drawnTile] : [...myHand]
+    const ronTile = { id: '__ron__', char: ronAvailable.char }
+    const tilesWithRon = [...allTiles, ronTile]
+    const groups = []
+    let current = []
+    tilesWithRon.forEach((tile, idx) => {
+      current.push(tile.char)
+      if (spaces.has(idx + 1) || idx === tilesWithRon.length - 1) {
+        if (current.length > 0) groups.push(current.join(''))
+        current = []
+      }
+    })
+    return groups.length >= 1 && groups.every(g => g.length >= 2 && wordsSet.has(g))
+  })()
+
+  // 辞書をクライアント側に読み込む
+  useEffect(() => {
+    fetch('/words.json')
+      .then(r => r.json())
+      .then(arr => setWordsSet(new Set(arr)))
+      .catch(e => console.error('words.json fetch failed', e))
+  }, [])
 
   useEffect(() => {
     if (!socket) return
@@ -96,7 +123,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
 
     socket.on('ron_available', ({ tile }) => {
       setRonAvailable(tile)
-      setMessage(`ロンできます！「${tile.char}」でアガリ`)
+      setMessage(`「${tile.char}」でロンできます！区切り線を合わせてロンボタンを押してください`)
       setCountdown(15)
       const timer = setInterval(() => {
         setCountdown(prev => {
@@ -110,9 +137,14 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
       }, 1000)
     })
 
-    socket.on('ron_failed', (msg) => {
-      setMessage(msg)
-      setRonAvailable(null)
+    socket.on('ron_failed', (payload) => {
+      if (typeof payload === 'string') {
+        setMessage(payload)
+        setRonAvailable(null)
+      } else {
+        setMessage(payload.msg)
+        if (!payload.keepRon) setRonAvailable(null)
+      }
     })
 
     socket.on('agari_failed', (msg) => setMessage(msg))
@@ -533,7 +565,7 @@ const TileChar = ({ char }) => (
                   </button>
                 </div>
               )}
-              {ronAvailable && (
+              {ronCanDeclare && (
                 <div className="naki-candidates">
                   <button
                     className="action-btn"
@@ -560,12 +592,16 @@ const TileChar = ({ char }) => (
                   >
                     ロン！
                   </button>
+                </div>
+              )}
+              {ronAvailable && (
+                <div className="naki-candidates">
                   <button className="action-btn naki-skip-btn" onClick={() => {
                     setRonAvailable(null)
                     setCountdown(null)
                     socket.emit('naki_skip')
                   }}>
-                    スキップ
+                    ロンをスキップ
                   </button>
                 </div>
               )}
