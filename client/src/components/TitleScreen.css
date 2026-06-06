@@ -70,3 +70,22 @@
   transform: translateY(-2px);
   box-shadow: 0 0 32px rgba(201, 168, 76, 0.7);
 }
+.title-yaku-btn {
+  background: transparent;
+  color: #c9a84c;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  padding: 12px 48px;
+  font-size: 16px;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.2em;
+  transition: all 0.2s;
+}
+
+.title-yaku-btn:hover {
+  background: rgba(201, 168, 76, 0.1);
+  border-color: #c9a84c;
+  box-shadow: 0 0 16px rgba(201, 168, 76, 0.3);
+}

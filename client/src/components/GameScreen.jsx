@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import './GameScreen.css'
+import YakuList from './YakuList'
 
 function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [state, setState] = useState(initialState)
@@ -20,6 +21,7 @@ function GameScreen({ socket, initialState, firstDraw, playerName }) {
   const [spaces, setSpaces] = useState(new Set())
   const [gameOver, setGameOver] = useState(null)
   const [countdown, setCountdown] = useState(null)
+  const [showYaku, setShowYaku] = useState(false)
 
   const myId = state?.players?.find(p => p.name === playerName)?.id || socket?.id
   const handRef = useRef(myHand)
@@ -387,6 +389,8 @@ const TileChar = ({ char }) => (
         </div>
       )}
       <div className="game-screen">
+        <button className="game-yaku-btn" onClick={() => setShowYaku(true)}>役一覧</button>
+        {showYaku && <YakuList onClose={() => setShowYaku(false)} inGame />}
         <div className="game-layout">
           <div className="area-top">
             <PlayerPanel player={topPlayer} position="top" />
