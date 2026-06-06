@@ -159,7 +159,7 @@ io.on('connection', (socket) => {
 
     const { calcScore } = require('./gameLogic');
     const isMenzen = room.melds[socket.id].length === 0;
-    const score = calcScore([...handChars, lastDiscard.char], room.melds[socket.id], isMenzen);
+    const score = calcScore([...handChars, lastDiscard.char], room.melds[socket.id], isMenzen, agariWords);
 
     const playerCount = room.players.length;
     const pointsEach = Math.floor(score / (playerCount - 1));

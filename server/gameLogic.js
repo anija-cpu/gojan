@@ -67,18 +67,25 @@ function calcWordScore(word) {
   return base + specialBonus
 }
 
-function calcScore(handChars, melds, isMenzen) {
+function calcScore(handChars, melds, isMenzen, groups) {
   // 天和チェック
   if (handChars.length === 14 && melds.length === 0) {
     const word = handChars.join('')
     if (WORDS.has(word)) return 32000
   }
 
-  const allWords = []
-  const handWords = findPartition(handChars)
-  if (!handWords) return 0
-  allWords.push(...handWords, ...melds.map(m => m.join('')))
+  const meldWords = melds.map(m => m.join(''))
+  let handWords
 
+  if (groups && groups.length > 0) {
+    // プレイヤーが区切り線で指定したグループをそのまま使う
+    handWords = groups
+  } else {
+    handWords = findPartition(handChars)
+    if (!handWords) return 0
+  }
+
+  const allWords = [...handWords, ...meldWords]
   let score = allWords.reduce((s, w) => s + calcWordScore(w), 0)
 
   // 組み合わせボーナス
